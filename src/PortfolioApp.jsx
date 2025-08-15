@@ -1245,32 +1245,48 @@ const Contact = () => (
     <SectionContainer>
       <SectionTitle title="Contact" kicker="say hello" />
       <Glass className="rounded-2xl p-6">
-        <div className="grid md:grid-cols-3 gap-4 text-sm">
-          <div className="space-y-1">
-            <div className="text-white/50">Email</div>
-            <a className="text-white hover:underline" href="mailto:pushyasaie@gmail.com">pushyasaie@gmail.com</a>
-          </div>
-          <div className="space-y-1">
-            <div className="text-white/50">Phone</div>
-            <a className="text-white hover:underline" href="tel:+17373896128">+1 737‑389‑6128</a>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10"
-              href="https://github.com/Ishrell/"
-              target="_blank"
-              rel="noreferrer"
+        <div className="grid md:grid-cols-3 gap-6 text-sm">
+          <div className="md:col-span-2">
+            <form
+              action="https://formspree.io/f/mnnzrojq"
+              method="POST"
+              className="space-y-3"
             >
-              <Github className="size-4" /> GitHub
-            </a>
-            <a
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10"
-              href="https://www.linkedin.com/in/pushya-saie-raag-e-134960272/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Linkedin className="size-4" /> LinkedIn
-            </a>
+              <label className="block">
+                <div className="text-white/50 mb-1">Name</div>
+                <input name="name" required className="w-full rounded-2xl p-3 bg-white/3 border border-white/10 text-white" />
+              </label>
+
+              <label className="block">
+                <div className="text-white/50 mb-1">Email</div>
+                <input name="email" type="email" required className="w-full rounded-2xl p-3 bg-white/3 border border-white/10 text-white" />
+              </label>
+
+              <label className="block">
+                <div className="text-white/50 mb-1">Message</div>
+                <textarea name="message" required rows={4} className="w-full rounded-2xl p-3 bg-white/3 border border-white/10 text-white" />
+              </label>
+
+              <div className="flex items-center justify-between">
+                <button type="submit" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[var(--accent)] text-black font-medium">Send Message</button>
+                <div className="text-xs text-white/60">I’ll reply within 48h. Your message is private and won’t be shared.</div>
+              </div>
+            </form>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="text-white/50">Phone</div>
+              <a className="text-white hover:underline" href="tel:+17373896128">+1 737‑389‑6128</a>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-white/50">Social</div>
+              <div className="flex flex-col gap-2">
+                <a className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10" href="https://github.com/Ishrell/" target="_blank" rel="noreferrer"><Github className="size-4"/> GitHub</a>
+                <a className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10" href="https://www.linkedin.com/in/pushya-saie-raag-e-134960272/" target="_blank" rel="noreferrer"><Linkedin className="size-4"/> LinkedIn</a>
+              </div>
+            </div>
           </div>
         </div>
       </Glass>
