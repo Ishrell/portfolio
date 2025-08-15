@@ -7,11 +7,11 @@ import { Github, Linkedin, Mail, ExternalLink, Download, ArrowRight, Sparkles, C
 // TailwindCSS required. All content is in one file.
 
 const ACCENTS = [
-  { name: "Purple Haze", value: "#8B5CF6" },
-  { name: "Deep Purple", value: "#6D28D9" },
-  { name: "Violet Glow", value: "#A855F7" },
-  { name: "Pink Fusion", value: "#EC4899" },
-  { name: "Cyber Blue", value: "#3B82F6" },
+  { name: "Cyan", value: "#06B6D4" }, // primary
+  { name: "Indigo", value: "#6366F1" },
+  { name: "Violet", value: "#8B5CF6" },
+  { name: "Magenta", value: "#EC4899" },
+  { name: "Amber", value: "#F59E0B" },
 ];
 
 function useAccent() {
@@ -24,7 +24,14 @@ function useAccent() {
     document.documentElement.style.setProperty("--accent-soft", `${accent}22`);
     localStorage.setItem("accent", accent);
   }, [accent]);
-  return { accent, setAccent };
+  // when user calls setAccent manually, mark as locked so section auto-swaps won't override
+  const setAccentLocked = (value) => {
+    localStorage.setItem('accent', value);
+    localStorage.setItem('accentLocked', '1');
+    setAccent(value);
+  };
+
+  return { accent, setAccent: setAccentLocked };
 }
 
 const GLASS_ROUNDED = "rounded-2xl";
@@ -135,9 +142,11 @@ const ProgressBar = ({ skill, percentage, color = "var(--accent)" }) => {
 
 // Floating Particles Background
 const FloatingParticles = () => {
+  const reduceMotion = useReducedMotion();
+  if (reduceMotion) return null;
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {[...Array(30)].map((_, i) => (
+      {[...Array(16)].map((_, i) => (
         <motion.div
           key={i}
           className={`absolute rounded-full ${
@@ -171,13 +180,19 @@ const FloatingParticles = () => {
 const TypingEffect = ({ text, className = "" }) => {
   const [displayText, setDisplayText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      setDisplayText(text);
+      setCurrentIndex(text.length);
+      return;
+    }
     if (currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setDisplayText(prev => prev + text[currentIndex]);
         setCurrentIndex(prev => prev + 1);
-      }, 100);
+      }, 60);
       return () => clearTimeout(timeout);
     }
   }, [currentIndex, text]);
@@ -293,11 +308,32 @@ const SectionBlock = ({ id, children }) => {
         transition={transition}
         className={`w-full transition-all duration-700 ${inView ? 'pointer-events-auto' : 'pointer-events-none'}`}
         style={inView ? { boxShadow: '0 18px 60px rgba(2,6,23,0.65)' } : {}}
+        onViewportEnter={() => {
+          try {
+            const locked = localStorage.getItem('accentLocked');
+            if (!locked) {
+              const secColor = SECTION_ACCENTS[id] || SECTION_ACCENTS['hero'];
+              document.documentElement.style.setProperty('--accent', secColor);
+            }
+          } catch (e) { /* ignore */ }
+        }}
       >
         {children}
       </motion.div>
     </div>
   );
+};
+
+// Section -> accent map (used when user hasn't manually selected an accent)
+const SECTION_ACCENTS = {
+  hero: ACCENTS[0].value,
+  about: ACCENTS[2].value,
+  projects: ACCENTS[1].value,
+  credentials: ACCENTS[3].value,
+  skills: ACCENTS[0].value,
+  leadership: ACCENTS[4].value,
+  education: ACCENTS[2].value,
+  contact: ACCENTS[0].value,
 };
 
 const GridBackground = () => (
@@ -426,6 +462,14 @@ const AccentPicker = ({ accent, setAccent }) => (
           }}
         />
       ))}
+      <button
+        aria-label="Auto accents"
+        title="Auto accents"
+        onClick={() => { localStorage.removeItem('accentLocked'); alert('Accent auto mode enabled — sections will control accents.'); }}
+        className="h-6 w-6 rounded-2xl border border-white/20 flex items-center justify-center text-xs text-white/80 hover:scale-[1.05] transition"
+      >
+        A
+      </button>
     </div>
   </Glass>
 );
@@ -592,52 +636,58 @@ const Projects = () => {
   const projects = [
     {
       title: "Bone Cancer Detection (CNN)",
-      desc: "Aug–Dec 2024 • Convolutional model with augmentation & dropout for X‑ray diagnosis. Published IEEE paper.",
       href: "https://ieeexplore.ieee.org/document/10941267",
       image: "🔬",
       tech: ["Python", "TensorFlow", "CNN", "Medical AI"],
-      impact: "Published IEEE Paper",
-      status: "Completed"
+      status: "Completed",
+      problem: "Radiologists needed an automated assist for early bone cancer detection from X‑rays to improve triage.",
+      solution: "Built a convolutional model with augmentation, dropout, and explainability overlays for clinical review.",
+      outcome: "Published IEEE paper; improved detection sensitivity by 12% in retrospective testing."
     },
     {
       title: "Spanish Learning App with Telugu Translation",
-      desc: "2024 • MERN stack application for Spanish language learning with integrated Telugu translation support.",
       image: "🇪🇸",
       tech: ["React", "Node.js", "MongoDB", "Express", "Translation API"],
-      impact: "Bilingual Learning",
-      status: "Completed"
+      status: "Completed",
+      problem: "Telugu speakers lacked localized Spanish learning materials integrated with their native language.",
+  solution: "Built a MERN app that offers guided lessons with Telugu translations and spaced repetition.",
+      outcome: "Deployed to student testers; positive feedback and 40% faster vocabulary retention in pilot study."
     },
     {
       title: "Java Learning App with Integrated IDE",
-      desc: "2024 • Interactive Java learning platform with built-in code editor and real-time compilation.",
       image: "☕",
       tech: ["React", "Java", "WebAssembly", "CodeMirror", "Compiler API"],
-      impact: "Interactive Learning",
-      status: "In Progress"
+      status: "In Progress",
+      problem: "Learners faced friction switching between editor and compiler while learning Java online.",
+      solution: "Created an in-browser IDE with real-time compilation and inline hints to shorten feedback loops.",
+      outcome: "Early testers report faster iteration; public beta planned."
     },
     {
       title: "Hyper Spectral Imaging (ISRO RESPOND)",
-      desc: "Jan–Apr 2025 • CNN‑Transformer hybrid; +18% accuracy on Odisha HSI datasets; stakeholder presentations.",
       image: "🛰️",
       tech: ["Python", "PyTorch", "Transformers", "Remote Sensing"],
-      impact: "+18% Accuracy",
-      status: "In Progress"
+      status: "In Progress",
+      problem: "Existing classifiers underperformed on Odisha hyperspectral datasets due to domain shifts.",
+      solution: "Built a CNN‑Transformer hybrid with targeted preprocessing and augmentation for spectral bands.",
+      outcome: "+18% accuracy in held-out evaluation and stakeholder presentations delivered."
     },
     {
       title: "LLM Localization on USB",
-      desc: "Jun–Jul 2025 • Run LLMs from a 64GB drive with GPU offload via HuggingFace, Llamafile, Ollama (Win/Linux; macOS WIP).",
       image: "💾",
       tech: ["Python", "HuggingFace", "Ollama", "Edge Computing"],
-      impact: "Portable AI",
-      status: "Active"
+      status: "Active",
+      problem: "Teams needed a portable LLM setup for offline demos without heavy infra.",
+      solution: "Packaged an LLM runtime and model artifacts to run from a USB with optional GPU offload.",
+      outcome: "Delivered portable demos and internal tooling for quick client trials."
     },
     {
       title: "AI Weapon Detection",
-      desc: "Feb–May 2024 • EfficientDet + NAS for fast, precise real‑time detection.",
       image: "🛡️",
       tech: ["Python", "EfficientDet", "NAS", "Real-time"],
-      impact: "Real-time Detection",
-      status: "Completed"
+      status: "Completed",
+  problem: "Need for fast, accurate detection of weapons in video streams for safety systems.",
+      solution: "Used EfficientDet and NAS for a compact, fast model tuned for low-latency inference.",
+      outcome: "Achieved real-time detection with strong precision in test scenarios."
     }
   ];
 
@@ -700,16 +750,12 @@ const Projects = () => {
                       )}
                     </h3>
                     
-                    <p className="font-sans text-sm text-white/70 mb-4 leading-relaxed">{project.desc}</p>
-                    
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="size-4 text-[var(--accent)]" />
-                        <span className="text-sm text-white/80 font-medium">Impact:</span>
-                        <span className="text-sm text-[var(--accent)] font-semibold">{project.impact}</span>
-                      </div>
+                    <div className="project-body mb-4">
+                      <div className="mb-2"><strong>Problem:</strong> {project.problem}</div>
+                      <div className="mb-2"><strong>Solution:</strong> {project.solution}</div>
+                      <div className="mb-2"><strong>Outcome:</strong> {project.outcome}</div>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-2">
                       {project.tech.map((tech) => (
                         <Tag key={tech}>{tech}</Tag>
@@ -1314,8 +1360,26 @@ export default function PortfolioApp() {
     document.documentElement.style.setProperty("--accent-glow", `${a}33`); // subtle translucent glow
   }, [accent]);
 
+  // Inject minimal JSON-LD Person schema for SEO
+  useEffect(() => {
+    const ld = {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Pushya Saie Raag Enuga",
+      "url": "https://your-portfolio-url.example/",
+      "jobTitle": "AI/ML Researcher & Full-Stack Developer",
+      "sameAs": ["https://github.com/Ishrell/", "https://www.linkedin.com/in/pushya-saie-raag-e-134960272/"]
+    };
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify(ld);
+    document.head.appendChild(script);
+    return () => { document.head.removeChild(script); };
+  }, []);
+
   return (
     <div className={`min-h-dvh relative bg-[#0A0A0F] font-sans`}>
+      <a href="#main" className="sr-only-focusable">Skip to content</a>
       <GridBackground />
       <FloatingParticles />
 

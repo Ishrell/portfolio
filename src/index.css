@@ -35,6 +35,34 @@ body {
   background: #06070b;
   color: #ffffff;
 }
+
+/* Skip-to-content link: visible when focused */
+.sr-only-focusable {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.sr-only-focusable:focus, .sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 8px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 8px;
+  color: white;
+  z-index: 60;
+}
+
+/* Font helpers: display vs body (fallbacks) */
+.font-display {
+  font-family: 'Sora', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.project-body { line-height: 1.7; }
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
