@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useInView, useReducedMotion } from "framer-motion";
+import "./index.css";
 import { Github, Linkedin, Mail, ExternalLink, Download, ArrowRight, Sparkles, Cpu, Server, Palette, Calendar, Clock, MessageSquare, Zap, Target, TrendingUp } from "lucide-react";
 
 // Ultra‑fresh, full‑bleed, glass/M3‑inspired dark UI
@@ -277,14 +278,19 @@ const InternshipsList = ({ compact = false }) => (
 const SectionBlock = ({ id, children }) => {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, threshold: 0.36 });
+  const reduceMotion = useReducedMotion();
+
+  const initial = reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.995 };
+  const animate = inView ? (reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }) : {};
+  const transition = reduceMotion ? {} : { duration: 0.72, ease: "easeOut" };
 
   return (
     <div id={id} className="snap-start min-h-screen flex items-center justify-center">
       <motion.div
         ref={ref}
-        initial={{ opacity: 0, y: 24, scale: 0.995 }}
-        animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
-        transition={{ duration: 0.72, ease: "easeOut" }}
+        initial={initial}
+        animate={animate}
+        transition={transition}
         className={`w-full transition-all duration-700 ${inView ? 'pointer-events-auto' : 'pointer-events-none'}`}
         style={inView ? { boxShadow: '0 18px 60px rgba(2,6,23,0.65)' } : {}}
       >
@@ -447,7 +453,7 @@ const Hero = () => {
                </h1>
               <div className=" rounded-2xl h-8 md:h-10 flex items-center">
                 <TypingEffect 
-                  text="AI/ML researcher & human‑centered full‑stack developer crafting useful, elegant systems for healthcare, accessibility, and immersive tech."
+                  text="AI/ML researcher & HCI‑minded full‑stack developer — shipped 8 projects used by 5k+ users; published medical‑AI paper."
                   className="text-white/70 text-lg max-w-2xl"
                 />
               </div>

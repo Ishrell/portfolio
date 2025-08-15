@@ -1,3 +1,40 @@
+:root {
+  --accent: #06B6D4; /* default cyan as recommended */
+  --accent-alt-1: #6366F1; /* indigo */
+  --accent-alt-2: #8B5CF6; /* violet */
+  --accent-alt-3: #EC4899; /* magenta */
+  --accent-alt-4: #F59E0B; /* amber */
+  --page-zoom: 0.9;
+}
+
+/* Safe: scale rem-based UI to ~90% for consistent, accessible scaling */
+html {
+  font-size: 90%;
+  scroll-behavior: smooth;
+  zoom: var(--page-zoom); /* Chromium/Edge support; harmless elsewhere */
+}
+
+/* Reduced motion: make animations inert when the user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Small accessibility niceties */
+a:focus-visible, button:focus-visible {
+  outline: 3px solid var(--accent-alt-2);
+  outline-offset: 2px;
+}
+
+/* Keep body background in sync with dark theme */
+body {
+  background: #06070b;
+  color: #ffffff;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
