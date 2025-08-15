@@ -22,7 +22,16 @@ export default {
       },
       backdropBlur: {
         xs: '2px',
-      }
+      },
+
+      /* >>> Typography additions <<< */
+      fontFamily: {
+        display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      letterSpacing: {
+        tightest: '-0.03em',
+      },
     },
   },
   plugins: [],

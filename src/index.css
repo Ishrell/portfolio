@@ -25,6 +25,7 @@
 
 html {
   scroll-behavior: smooth;
+  zoom: var(--page-zoom);
 }
 
 body {

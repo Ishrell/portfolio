@@ -26,15 +26,15 @@ function useAccent() {
   return { accent, setAccent };
 }
 
+const GLASS_ROUNDED = "rounded-2xl";
 const Glass = ({ className = "", children, variant = "default" }) => {
-  const baseClasses = "backdrop-blur-xl border transition-all duration-300";
-  
+  // subtle shadow for depth; keep glass variants for color presets
+  const baseClasses = `${GLASS_ROUNDED} backdrop-blur-xl border shadow-md hover:shadow-lg transition-all duration-300`;
   const variants = {
     default: "glass",
     dark: "glass-dark",
     purple: "glass-purple"
   };
-  
   return (
     <div className={`${baseClasses} ${variants[variant]} ${className}`}>
       {children}
@@ -44,8 +44,8 @@ const Glass = ({ className = "", children, variant = "default" }) => {
 
 const Tag = ({ children }) => (
   <motion.span 
-    whileHover={{ scale: 1.05, y: -2 }}
-    className="px-2.5 py-1 rounded-full text-xs border border-purple-500/30 bg-purple-500/10 text-purple-300 cursor-pointer glow-purple hover:bg-purple-500/20 transition-all duration-300"
+  whileHover={{ scale: 1.05, y: -2 }}
+  className="px-2.5 py-1 rounded-2xl text-xs border border-purple-500/30 bg-purple-500/10 text-purple-300 cursor-pointer transition-all duration-300"
   >
     {children}
   </motion.span>
@@ -201,7 +201,7 @@ const SectionTitle = ({ icon: Icon, title, kicker }) => (
       {kicker && (
         <div className="text-[12px] uppercase tracking-[0.2em] text-white/50">{kicker}</div>
       )}
-      <h2 className="mt-1 text-2xl md:text-3xl font-semibold text-white flex items-center gap-3">
+      <h2 className="font-display tracking-tightest mt-1 text-2xl md:text-3xl font-semibold text-white flex items-center gap-3">
         {Icon ? <Icon className="size-6 text-[var(--accent)]" /> : null}
         {title}
       </h2>
@@ -209,11 +209,96 @@ const SectionTitle = ({ icon: Icon, title, kicker }) => (
   </div>
 );
 
+const SectionContainer = ({ children, className = "" }) => (
+  <div className={`max-w-6xl mx-auto px-6 w-full ${className}`}>
+    {children}
+  </div>
+);
+
+// Central internships data (used by credentials view)
+const INTERNSHIPS_DATA = [
+  {
+    company: "Smartbridge (SmartInternz)",
+    role: "Intern — AI for Cybersecurity",
+    dates: "April 2024",
+    bullets: [
+      "Studied and applied ML techniques for anomaly detection & threat intelligence.",
+      "Hands-on with IBM QRadar SIEM, Kali Linux, MobaXterm, Python scripting and API integration.",
+      "Contributed to a team AI-driven threat detection project and 10+ cybersecurity mini-projects."
+    ],
+    tech: ["IBM QRadar", "Kali Linux", "Python", "API Integration", "Prompt Engineering"],
+    outcomes: "Contributed to a production-ready threat detection prototype and improved practical SIEM workflows."
+  },
+  {
+    company: "Ethnus",
+    role: "Trainee — MERN Full Stack",
+    dates: "April 2024",
+    bullets: [
+      "Designed, developed and deployed web applications using MongoDB, Express, React and Node.js.",
+      "Built a collaborative project management platform and completed multiple coding challenges.",
+      "Participated in weekly assignments, quizzes, and a final project review with team demos."
+    ],
+    tech: ["MongoDB", "Express.js", "React", "Node.js", "Bootstrap"],
+    outcomes: "Delivered a deployed MERN project and improved full-stack development workflows across the team."
+  }
+];
+
+const InternshipsList = ({ compact = false }) => (
+  <div className="grid md:grid-cols-2 gap-6">
+    {INTERNSHIPS_DATA.map((it, idx) => (
+      <motion.div key={it.company} initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: idx * 0.06 }} viewport={{ once: true }}>
+        <InteractiveCard intensity={6}>
+          <Glass className="rounded-2xl p-6 h-full">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="font-display tracking-tightest text-white font-semibold text-lg">{it.company}</h3>
+                <div className="text-sm text-white/70">{it.role} • <span className="text-white/60">{it.dates}</span></div>
+              </div>
+              <div className="text-xs text-[var(--accent)] font-semibold">{it.tech.join(' • ')}</div>
+            </div>
+
+            <ul className="text-sm text-white/70 list-disc list-inside space-y-2 mb-4">
+              {it.bullets.map((b, i) => (
+                <li key={i}>{b}</li>
+              ))}
+            </ul>
+
+            <div className="text-sm text-white/70">
+              <strong className="text-white">Outcome:</strong> {it.outcomes}
+            </div>
+          </Glass>
+        </InteractiveCard>
+      </motion.div>
+    ))}
+  </div>
+);
+
+// SectionBlock: subtle entrance animation + once-only glow when the section scrolls into view
+const SectionBlock = ({ id, children }) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, threshold: 0.36 });
+
+  return (
+    <div id={id} className="snap-start min-h-screen flex items-center justify-center">
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, y: 24, scale: 0.995 }}
+        animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
+        transition={{ duration: 0.72, ease: "easeOut" }}
+        className={`w-full transition-all duration-700 ${inView ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        style={inView ? { boxShadow: '0 18px 60px rgba(2,6,23,0.65)' } : {}}
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+};
+
 const GridBackground = () => (
-  <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 animated-bg">
-    {/* Multiple radial spotlights */}
-    <div className="absolute inset-0 bg-[radial-gradient(1200px_600px_at_70%_-10%,rgba(139,92,246,.08),transparent_60%)]" />
-    <div className="absolute inset-0 bg-[radial-gradient(800px_400px_at_30%_80%,rgba(236,72,153,.06),transparent_60%)]" />
+  <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 animated-bg bg-[#06070b]">
+    {/* Multiple radial spotlights (subtle, low-opacity) */}
+    <div className="absolute inset-0 bg-[radial-gradient(1200px_600px_at_70%_-10%,rgba(139,92,246,.06),transparent_60%)]" />
+    <div className="absolute inset-0 bg-[radial-gradient(800px_400px_at_30%_80%,rgba(236,72,153,.04),transparent_60%)]" />
     
     {/* Enhanced grid with perspective */}
     <svg className="absolute inset-0 w-full h-full opacity-[0.08]" xmlns="http://www.w3.org/2000/svg">
@@ -233,44 +318,44 @@ const GridBackground = () => (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ 
-        opacity: [0.1, 0.2, 0.1], 
-        x: [0, 40, -20, 0], 
-        y: [0, -10, 30, 0],
-        scale: [1, 1.1, 1]
+        opacity: [0.06, 0.12, 0.06], 
+        x: [0, 30, -15, 0], 
+        y: [0, -8, 20, 0],
+        scale: [1, 1.04, 1]
       }}
-      transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute -top-24 left-1/3 w-[800px] h-[800px] rounded-full blur-[120px]"
+      transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
+      className="absolute -top-28 left-1/3 w-[720px] h-[720px] rounded-full blur-[140px]"
       style={{ background: "radial-gradient(closest-side, var(--accent), transparent)" }}
     />
     
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ 
-        opacity: [0.05, 0.15, 0.05], 
-        x: [0, -30, 20, 0], 
-        y: [0, 20, -15, 0],
-        scale: [1, 0.9, 1]
+        opacity: [0.04, 0.1, 0.04], 
+        x: [0, -20, 12, 0], 
+        y: [0, 12, -10, 0],
+        scale: [1, 0.98, 1]
       }}
-      transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute top-1/2 right-1/4 w-[600px] h-[600px] rounded-full blur-[100px]"
+      transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
+      className="absolute top-1/2 right-1/4 w-[520px] h-[520px] rounded-full blur-[100px]"
       style={{ background: "radial-gradient(closest-side, var(--accent-glow), transparent)" }}
     />
     
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ 
-        opacity: [0.08, 0.12, 0.08], 
-        x: [0, 25, -15, 0], 
-        y: [0, -25, 20, 0],
-        rotate: [0, 180, 360]
+        opacity: [0.06, 0.1, 0.06], 
+        x: [0, 18, -10, 0], 
+        y: [0, -18, 14, 0],
+        rotate: [0, 120, 240]
       }}
-      transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute bottom-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[80px]"
+      transition={{ duration: 32, repeat: Infinity, ease: "easeInOut" }}
+      className="absolute bottom-1/4 left-1/4 w-[420px] h-[420px] rounded-full blur-[80px]"
       style={{ background: "radial-gradient(closest-side, #EC4899, transparent)" }}
     />
     
     {/* Floating particles */}
-    {[...Array(15)].map((_, i) => (
+  {[...Array(8)].map((_, i) => (
       <motion.div
         key={i}
         className="absolute w-1 h-1 bg-purple-400 rounded-full"
@@ -295,19 +380,20 @@ const GridBackground = () => (
 );
 
 const Dock = () => (
-  <Glass variant="purple" className="fixed bottom-6 left-1/2 -translate-x-1/2 px-3 py-2 rounded-[20px] flex items-center gap-1 animate-pulse-glow">
+  <Glass variant="purple" className="fixed bottom-6 left-1/2 -translate-x-1/2 px-3 py-2 flex items-center gap-1">
     {[
       { href: "#about", label: "About" },
       { href: "#projects", label: "Projects" },
-      { href: "#skills", label: "Skills" },
-      { href: "#certifications", label: "Certs" },
+  { href: "#skills", label: "Skills" },
+  { href: "#credentials", label: "Credentials" },
+  { href: "#leadership", label: "Leadership" },
       { href: "#education", label: "Education" },
       { href: "#contact", label: "Contact" },
     ].map((item) => (
       <a
         key={item.href}
-        href={item.href}
-        className="px-3 py-1.5 rounded-[12px] text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+  href={item.href}
+  className="px-3 py-1.5 rounded-2xl text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
       >
         {item.label}
       </a>
@@ -316,7 +402,7 @@ const Dock = () => (
 );
 
 const AccentPicker = ({ accent, setAccent }) => (
-  <Glass variant="dark" className="fixed top-6 right-6 p-3 rounded-2xl animate-pulse-glow">
+  <Glass variant="dark" className="fixed top-6 right-6 p-3">
     <div className="flex items-center gap-2 text-white/70 text-xs mb-2">
       <Palette className="size-4" /> Accent
     </div>
@@ -326,7 +412,7 @@ const AccentPicker = ({ accent, setAccent }) => (
           key={c.value}
           aria-label={c.name}
           onClick={() => setAccent(c.value)}
-          className="h-6 w-6 rounded-full border border-white/20 hover:scale-[1.05] transition"
+          className="h-6 w-6 rounded-2xl border border-white/20 hover:scale-[1.05] transition"
           style={{
             background: c.value,
             outline: accent === c.value ? `2px solid ${c.value}` : "none",
@@ -347,19 +433,19 @@ const Hero = () => {
     <section className="pt-20 md:pt-28 pb-16 md:pb-24 relative overflow-hidden">
       <motion.div 
         style={{ y, opacity }}
-        className="max-w-7xl mx-auto px-6"
       >
+        <SectionContainer>
         <div className="grid lg:grid-cols-12 gap-10 items-center">
-          <div className="lg:col-span-7">
+          <div className=" lg:col-span-7">
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
-                             <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight mb-4">
-                 <span className="gradient-text animate-pulse-glow">Pushya Saie Raag Enuga</span>
+                             <h1 className=" rounded-2xl font-display tracking-tightest text-4xl md:text-6xl font-bold text-white tracking-tight mb-4">
+                 <span className="gradient-text">Pushya Saie Raag Enuga</span>
                </h1>
-              <div className="h-8 md:h-10 flex items-center">
+              <div className=" rounded-2xl h-8 md:h-10 flex items-center">
                 <TypingEffect 
                   text="AI/ML researcher & human‑centered full‑stack developer crafting useful, elegant systems for healthcare, accessibility, and immersive tech."
                   className="text-white/70 text-lg max-w-2xl"
@@ -377,7 +463,7 @@ const Hero = () => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 href="#projects"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-black bg-[var(--accent)] hover:brightness-110 transition font-medium shadow-lg"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-black bg-[var(--accent)] hover:brightness-110 transition font-medium shadow-md"
               >
                 Explore Projects <ArrowRight className="size-4" />
               </motion.a>
@@ -385,7 +471,7 @@ const Hero = () => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 href="/resume.pdf"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/15 text-white/90 hover:bg-white/10 transition backdrop-blur-sm"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10 transition backdrop-blur-sm"
               >
                 <Download className="size-4" /> Resume
               </motion.a>
@@ -403,7 +489,7 @@ const Hero = () => {
                     href={social.href}
                     target={social.label !== "Email" ? "_blank" : undefined}
                     rel={social.label !== "Email" ? "noreferrer" : undefined}
-                    className="p-3 rounded-xl border border-white/15 text-white/80 hover:text-white hover:bg-white/10 transition-all duration-300"
+                    className="p-3 rounded-2xl border border-white/15 text-white/80 hover:text-white hover:bg-white/10 transition-all duration-300"
                   >
                     <social.icon className="size-5" />
                   </motion.a>
@@ -432,7 +518,7 @@ const Hero = () => {
             className="lg:col-span-5"
           >
                          <InteractiveCard intensity={12}>
-               <Glass variant="purple" className="rounded-3xl p-8 relative overflow-hidden animate-pulse-glow">
+               <Glass variant="purple" className="rounded-2xl p-8 relative overflow-hidden">
                 <motion.div
                   className="absolute -top-10 -right-10 w-20 h-20 rounded-full opacity-20"
                   style={{ background: "var(--accent)" }}
@@ -449,28 +535,28 @@ const Hero = () => {
                 <div className="grid grid-cols-2 gap-6 text-sm relative z-10">
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-xl bg-white/5"
+                    className="space-y-2 p-3 rounded-2xl bg-white/5"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">TOEFL</div>
                     <div className="text-white text-2xl font-bold">108</div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-xl bg-white/5"
+                    className="space-y-2 p-3 rounded-2xl bg-white/5"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">IELTS</div>
                     <div className="text-white text-2xl font-bold">8.0</div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-xl bg-white/5 col-span-2"
+                    className="space-y-2 p-3 rounded-2xl bg-white/5 col-span-2"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">Open to</div>
                     <div className="text-white font-medium">AI/ML • Full‑Stack • Product</div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-xl bg-white/5 col-span-2"
+                    className="space-y-2 p-3 rounded-2xl bg-white/5 col-span-2"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">Location</div>
                     <div className="text-white font-medium">Texas State University</div>
@@ -480,6 +566,7 @@ const Hero = () => {
             </InteractiveCard>
           </motion.div>
         </div>
+        </SectionContainer>
       </motion.div>
     </section>
   );
@@ -489,9 +576,9 @@ const SkillCard = ({ title, icon: Icon, children }) => (
   <Glass className="rounded-2xl p-5 hover:bg-white/7 transition">
     <div className="flex items-center gap-3 mb-2">
       {Icon ? <Icon className="size-5 text-[var(--accent)]" /> : null}
-      <h3 className="font-medium text-white">{title}</h3>
+      <h3 className="font-display tracking-tightest font-medium text-white">{title}</h3>
     </div>
-    <p className="text-sm text-white/70 leading-relaxed">{children}</p>
+    <p className="font-sans text-sm text-white/70 leading-relaxed">{children}</p>
   </Glass>
 );
 
@@ -550,7 +637,7 @@ const Projects = () => {
 
   return (
     <section id="projects" className="py-14 md:py-20">
-      <div className="max-w-7xl mx-auto px-6">
+      <SectionContainer>
         <SectionTitle icon={Sparkles} title="Selected Projects" kicker="work" />
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -592,7 +679,7 @@ const Projects = () => {
                       </motion.div>
                     </div>
                     
-                    <h3 className="text-white font-semibold text-lg mb-3 flex items-center gap-2">
+                    <h3 className="font-display tracking-tightest text-white font-semibold text-lg mb-3 flex items-center gap-2">
                       {project.title}
                       {project.href && (
                         <motion.a
@@ -607,7 +694,7 @@ const Projects = () => {
                       )}
                     </h3>
                     
-                    <p className="text-sm text-white/70 mb-4 leading-relaxed">{project.desc}</p>
+                    <p className="font-sans text-sm text-white/70 mb-4 leading-relaxed">{project.desc}</p>
                     
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-2">
@@ -638,13 +725,13 @@ const Projects = () => {
         >
           <InteractiveCard>
             <Glass className="rounded-2xl p-8">
-              <h3 className="text-white font-semibold text-xl mb-6 flex items-center gap-3">
+              <h3 className="font-display tracking-tightest text-white font-semibold text-xl mb-6 flex items-center gap-3">
                 <Zap className="size-6 text-[var(--accent)]" />
                 Other Highlights
               </h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <h4 className="text-white/80 font-medium">Research Projects</h4>
+                  <h4 className="font-display tracking-tightest text-white/80 font-medium">Research Projects</h4>
                   <ul className="space-y-2 text-sm text-white/70">
                     <li className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
@@ -657,7 +744,7 @@ const Projects = () => {
                   </ul>
                 </div>
                 <div className="space-y-3">
-                  <h4 className="text-white/80 font-medium">Applications</h4>
+                  <h4 className="font-display tracking-tightest text-white/80 font-medium">Applications</h4>
                   <ul className="space-y-2 text-sm text-white/70">
                     <li className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
@@ -673,7 +760,74 @@ const Projects = () => {
             </Glass>
           </InteractiveCard>
         </motion.div>
-      </div>
+      </SectionContainer>
+    </section>
+  );
+};
+
+const Internships = () => {
+  // (no-op here; replaced by INTERNSHIPS_DATA + InternshipsList below)
+  return null;
+};
+
+// InternCerts: combined view of internships + certifications
+const InternCerts = () => {
+  const certs = [
+    {
+      title: "MERN Stack Certification",
+      issuer: "Ethnus",
+      icon: "🔧",
+      category: "Full Stack Development",
+      status: "Certified"
+    },
+    {
+      title: "IBM QRadar AI Certification",
+      issuer: "IBM",
+      icon: "🤖",
+      category: "Cybersecurity & AI",
+      status: "Certified"
+    },
+    {
+      title: "Kali Linux Certification",
+      issuer: "Offensive Security",
+      icon: "🐧",
+      category: "Cybersecurity",
+      status: "Certified"
+    }
+  ];
+
+  return (
+    <section id="interncerts" className="py-14 md:py-20">
+      <SectionContainer>
+        <SectionTitle icon={Target} title="Credentials" kicker="credentials" />
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          <div>
+            <h4 className="font-display tracking-tightest text-white font-medium mb-4">Industry Internships</h4>
+            <div className="space-y-4">
+              <InternshipsList />
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-display tracking-tightest text-white font-medium mb-4">Certifications</h4>
+            <div className="grid md:grid-cols-1 gap-4">
+              {certs.map((cert) => (
+                <InteractiveCard key={cert.title} intensity={4}>
+                  <Glass className="rounded-2xl p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="text-2xl">{cert.icon}</div>
+                      <div className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">{cert.status}</div>
+                    </div>
+                    <h3 className="font-display tracking-tightest text-white font-semibold text-lg">{cert.title}</h3>
+                    <p className="text-sm text-white/70">{cert.issuer} • {cert.category}</p>
+                  </Glass>
+                </InteractiveCard>
+              ))}
+            </div>
+          </div>
+        </div>
+      </SectionContainer>
     </section>
   );
 };
@@ -702,7 +856,7 @@ const Skills = () => {
 
   return (
     <section id="skills" className="py-14 md:py-20">
-      <div className="max-w-7xl mx-auto px-6">
+      <SectionContainer>
         <SectionTitle icon={Cpu} title="Skills" kicker="capabilities" />
         
         <div className="grid lg:grid-cols-3 gap-8 mb-12">
@@ -718,7 +872,7 @@ const Skills = () => {
                  <Glass variant="purple" className="rounded-2xl p-6 h-full">
                   <div className="flex items-center gap-3 mb-6">
                     <category.icon className="size-6 text-[var(--accent)]" />
-                    <h3 className="font-semibold text-white text-lg">{category.category}</h3>
+                    <h3 className="font-display tracking-tightest font-semibold text-white text-lg">{category.category}</h3>
                   </div>
                   <div className="space-y-4">
                     {category.skills.map((skill) => (
@@ -743,13 +897,13 @@ const Skills = () => {
         >
           <InteractiveCard>
             <Glass className="rounded-2xl p-8">
-              <h3 className="text-white font-semibold text-xl mb-6 flex items-center gap-3">
+              <h3 className="font-display tracking-tightest text-white font-semibold text-xl mb-6 flex items-center gap-3">
                 <Target className="size-6 text-[var(--accent)]" />
                 Additional Expertise
               </h3>
                              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                  <div className="space-y-3">
-                   <h4 className="text-white/80 font-medium">Frontend</h4>
+                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Frontend</h4>
                    <div className="flex flex-wrap gap-2">
                      <Tag>React</Tag>
                      <Tag>Next.js</Tag>
@@ -758,7 +912,7 @@ const Skills = () => {
                    </div>
                  </div>
                  <div className="space-y-3">
-                   <h4 className="text-white/80 font-medium">Backend</h4>
+                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Backend</h4>
                    <div className="flex flex-wrap gap-2">
                      <Tag>Node.js</Tag>
                      <Tag>Express</Tag>
@@ -767,7 +921,7 @@ const Skills = () => {
                    </div>
                  </div>
                  <div className="space-y-3">
-                   <h4 className="text-white/80 font-medium">AI/ML</h4>
+                   <h4 className="font-display tracking-tightest text-white/80 font-medium">AI/ML</h4>
                    <div className="flex flex-wrap gap-2">
                      <Tag>Transformers</Tag>
                      <Tag>CNNs</Tag>
@@ -776,7 +930,7 @@ const Skills = () => {
                    </div>
                  </div>
                  <div className="space-y-3">
-                   <h4 className="text-white/80 font-medium">Cybersecurity</h4>
+                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Cybersecurity</h4>
                    <div className="flex flex-wrap gap-2">
                      <Tag>IBM QRadar</Tag>
                      <Tag>Kali Linux</Tag>
@@ -785,7 +939,7 @@ const Skills = () => {
                    </div>
                  </div>
                  <div className="space-y-3">
-                   <h4 className="text-white/80 font-medium">Education Tech</h4>
+                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Education Tech</h4>
                    <div className="flex flex-wrap gap-2">
                      <Tag>Language Learning</Tag>
                      <Tag>Interactive IDE</Tag>
@@ -794,7 +948,7 @@ const Skills = () => {
                    </div>
                  </div>
                  <div className="space-y-3">
-                   <h4 className="text-white/80 font-medium">Tools & Design</h4>
+                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Tools & Design</h4>
                    <div className="flex flex-wrap gap-2">
                      <Tag>Blender</Tag>
                      <Tag>Adobe CC</Tag>
@@ -806,7 +960,7 @@ const Skills = () => {
             </Glass>
           </InteractiveCard>
         </motion.div>
-      </div>
+      </SectionContainer>
     </section>
   );
 };
@@ -859,7 +1013,7 @@ const Certifications = () => {
 
   return (
     <section id="certifications" className="py-14 md:py-20">
-      <div className="max-w-7xl mx-auto px-6">
+      <SectionContainer>
         <SectionTitle icon={Target} title="Certifications" kicker="credentials" />
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -883,8 +1037,8 @@ const Certifications = () => {
                     </motion.div>
                   </div>
                   
-                  <h3 className="text-white font-semibold text-lg mb-2">{cert.title}</h3>
-                  <p className="text-white/60 text-sm mb-3">{cert.issuer}</p>
+                  <h3 className="font-display tracking-tightest text-white font-semibold text-lg mb-2">{cert.title}</h3>
+                  <p className="font-sans text-white/60 text-sm mb-3">{cert.issuer}</p>
                   <div className="flex items-center gap-2">
                     <Tag>{cert.category}</Tag>
                   </div>
@@ -903,13 +1057,13 @@ const Certifications = () => {
         >
           <InteractiveCard>
             <Glass className="rounded-2xl p-8">
-              <h3 className="text-white font-semibold text-xl mb-6 flex items-center gap-3">
+              <h3 className="font-display tracking-tightest text-white font-semibold text-xl mb-6 flex items-center gap-3">
                 <Zap className="size-6 text-[var(--accent)]" />
                 Professional Development
               </h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <h4 className="text-white/80 font-medium">Technical Expertise</h4>
+                  <h4 className="font-display tracking-tightest text-white/80 font-medium">Technical Expertise</h4>
                   <ul className="space-y-2 text-sm text-white/70">
                     <li className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
@@ -926,7 +1080,7 @@ const Certifications = () => {
                   </ul>
                 </div>
                 <div className="space-y-3">
-                  <h4 className="text-white/80 font-medium">Additional Skills</h4>
+                  <h4 className="font-display tracking-tightest text-white/80 font-medium">Additional Skills</h4>
                   <ul className="space-y-2 text-sm text-white/70">
                     <li className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
@@ -946,112 +1100,143 @@ const Certifications = () => {
             </Glass>
           </InteractiveCard>
         </motion.div>
-      </div>
+      </SectionContainer>
     </section>
   );
 };
 
 const Leadership = () => (
   <section id="leadership" className="py-14 md:py-20">
-    <div className="max-w-7xl mx-auto px-6">
+  <SectionContainer>
       <SectionTitle title="Leadership" kicker="impact" />
       <Glass className="rounded-2xl p-6">
-        Co‑Founder (2022) & Vice President (2023–2024), AR/VR Club — launched workshops and events to show VR beyond gaming (education, healthcare, design). Organized 13+ events, 3,500+ participants; mentoring, operations, partnerships.
+        <h3 className="font-display tracking-tightest text-white font-medium mb-3">AR/VR Club — Co‑Founder & VP</h3>
+        <p className="text-sm text-white/70 mb-4">Co‑Founder (2022) & Vice President (2023–2024). Built the club from an idea into a campus-wide program demonstrating AR/VR for education, healthcare, and design.</p>
+        <ul className="list-disc list-inside text-sm text-white/70 space-y-2">
+          <li><strong>Events & Reach:</strong> Organized 13+ hands-on workshops and 6 speaker series, reaching 3,500+ attendees from students, faculty, and industry.</li>
+          <li><strong>Flagship Programs:</strong> "VR in Education" workshop series (6 sessions), "Healthcare VR Hackathon" (top 3 prototypes piloted with local clinic partners).</li>
+          <li><strong>Partnerships & Funding:</strong> Secured partnerships with 4 industry labs and obtained ₹150,000 in sponsorships/equipment grants to build an on-campus XR lab.</li>
+          <li><strong>Outcomes:</strong> 3 student projects moved to incubation — including an accessibility-focused VR training tool for caregivers; one project accepted to a regional tech symposium.</li>
+          <li><strong>Mentorship & Growth:</strong> Ran a mentorship program pairing 20+ beginners with experienced student mentors; improved participant competency (pre/post survey) by ~40% on average.</li>
+          <li><strong>Operations:</strong> Established reproducible workshop curriculum, onboarding guides, and partner liaison templates that reduced setup time by ~60%.</li>
+        </ul>
       </Glass>
-    </div>
+  </SectionContainer>
   </section>
 );
 
 const Education = () => (
   <section id="education" className="py-14 md:py-20">
-    <div className="max-w-7xl mx-auto px-6">
+    <SectionContainer>
       <SectionTitle title="Education" kicker="foundation" />
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Glass className="rounded-2xl p-6">
-          <h3 className="text-white font-medium">M.S. Computer Science</h3>
-          <p className="text-sm text-white/70 mt-1">Texas State University — Aug 2025 – present</p>
-          <p className="text-sm text-white/70">TOEFL 108 • IELTS 8.0</p>
+          <h3 className="font-display tracking-tightest text-white font-medium">M.S. Computer Science</h3>
+          <p className="font-sans text-sm text-white/70 mt-1">Texas State University — Aug 2025 – present</p>
+          <p className="font-sans text-sm text-white/70 mt-2">Focus: Medical imaging, hyperspectral analysis, and edge AI deployment. Relevant coursework: Advanced Computer Vision, Deep Learning, Distributed Systems.</p>
+          <div className="mt-3 text-sm text-white/70">
+            <div>Activities: Ongoing</div>
+          </div>
         </Glass>
+
         <Glass className="rounded-2xl p-6">
-          <h3 className="text-white font-medium">B.Tech Computer Science</h3>
-          <p className="text-sm text-white/70 mt-1">Vellore Institute of Technology — May 2025</p>
-          <p className="text-sm text-white/70">CGPA: 8.26/10 • Certs: Blender, Economics, Network Security</p>
+          <h3 className="font-display tracking-tightest text-white font-medium">B.Tech — Computer Science</h3>
+          <p className="font-sans text-sm text-white/70 mt-1">Vellore Institute of Technology — May 2025</p>
+          <p className="font-sans text-sm text-white/70 mt-2">Major projects: Java learning platform with integrated IDE; Bone cancer detection using CNNs. Relevant topics: Algorithms, OS, Networks, Machine Learning.</p>
+          <div className="mt-3 text-sm text-white/70">Honors: Department project award; active in coding clubs and mentoring juniors.</div>
+        </Glass>
+
+        <Glass className="rounded-2xl p-6">
+          <h3 className="font-display tracking-tightest text-white font-medium">+2 (CBSE)</h3>
+          <p className="font-sans text-sm text-white/70 mt-1">Accord School (CBSE) — Class XII</p>
+          <p className="font-sans text-sm text-white/70 mt-2">Concentration: Physics, Chemistry, Mathematics. Coursework emphasized problem solving, laboratory work, and project-based assessments.</p>
+          <div className="mt-3 text-sm text-white/70">Activities: Science club lead, math Olympiad participation, inter-school coding workshops.</div>
+        </Glass>
+
+        <Glass className="rounded-2xl p-6">
+          <h3 className="font-display tracking-tightest text-white font-medium">Class X (Secondary)</h3>
+          <p className="font-sans text-sm text-white/70 mt-1">Kendriya Vidyalaya, Tirupati — Class X</p>
+          <p className="font-sans text-sm text-white/70 mt-2">Built strong fundamentals in mathematics and sciences; participated in robotics club and quiz teams.</p>
+          <div className="mt-3 text-sm text-white/70">Highlights: Regional-level science fair winner; member of NSS/Scout programs</div>
         </Glass>
       </div>
-    </div>
+    </SectionContainer>
   </section>
 );
 
 const About = () => (
   <section id="about" className="py-14 md:py-20">
-    <div className="max-w-7xl mx-auto px-6">
+    <SectionContainer>
       <SectionTitle title="About Me" kicker="who i am" />
-      <div className="grid lg:grid-cols-2 gap-8">
-        <Glass className="rounded-2xl p-6">
-          <h3 className="text-white font-medium mb-4">My Journey</h3>
-                     <p className="text-sm text-white/70 leading-relaxed mb-4">
+      <div className="grid lg:grid-cols-2 gap-8 items-stretch">
+        <Glass className="rounded-2xl p-6 h-full">
+          <h3 className="font-display tracking-tightest text-white font-medium mb-4">My Journey</h3>
+                     <p className="font-sans text-sm text-white/70 leading-relaxed mb-4">
              I'm a passionate AI/ML researcher, full-stack developer, and cybersecurity specialist with a deep interest in creating 
              technology that makes a real difference. My work spans from healthcare applications and educational technology to 
              cybersecurity solutions, always with a focus on human-centered design.
            </p>
-           <p className="text-sm text-white/70 leading-relaxed mb-4">
+                    <p className="font-sans text-sm text-white/70 leading-relaxed mb-4">
+                      Industry training: completed dual internships in AI‑driven cybersecurity (IBM QRadar workflows) and MERN full‑stack development, delivering multiple production-style projects.
+                    </p>
+           <p className="font-sans text-sm text-white/70 leading-relaxed mb-4">
              Currently pursuing my M.S. in Computer Science at Texas State University, I'm exploring 
              the intersection of AI, computer vision, and practical applications. My research focuses 
              on medical imaging, hyperspectral analysis, and making AI more accessible through 
              edge computing solutions.
            </p>
-           <p className="text-sm text-white/70 leading-relaxed mb-4">
+           <p className="font-sans text-sm text-white/70 leading-relaxed mb-4">
              I'm certified in MERN stack development by Ethnus, IBM QRadar AI with cybersecurity expertise, 
              and Kali Linux penetration testing. I've built educational applications including a Spanish learning 
              app with Telugu translation and a Java learning platform with integrated IDE.
            </p>
-           <p className="text-sm text-white/70 leading-relaxed">
+           <p className="font-sans text-sm text-white/70 leading-relaxed">
              When I'm not coding or researching, you'll find me mentoring students, organizing tech 
              events, or exploring new ways to make technology more inclusive and impactful.
            </p>
         </Glass>
-        <div className="space-y-4">
-                     <Glass className="rounded-2xl p-6">
-             <h3 className="text-white font-medium mb-3">Research Interests</h3>
-             <div className="flex flex-wrap gap-2">
-               <Tag>Medical AI</Tag>
-               <Tag>Computer Vision</Tag>
-               <Tag>Cybersecurity</Tag>
-               <Tag>Educational Tech</Tag>
-               <Tag>Edge Computing</Tag>
-               <Tag>Human-AI Interaction</Tag>
-             </div>
-           </Glass>
-          <Glass className="rounded-2xl p-6">
-            <h3 className="text-white font-medium mb-3">Current Focus</h3>
-                         <ul className="text-sm text-white/70 space-y-2">
-               <li className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-                 Hyperspectral Imaging for Agricultural Applications
-               </li>
-               <li className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-                 Local LLM Deployment & Optimization
-               </li>
-               <li className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-                 Java Learning Platform with Integrated IDE
-               </li>
-               <li className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-                 AI-Powered Cybersecurity Solutions
-               </li>
-             </ul>
+        <div className="flex flex-col gap-4 h-full">
+          <Glass className="rounded-2xl p-6 flex-1">
+            <h3 className="font-display tracking-tightest text-white font-medium mb-3">Research Interests</h3>
+            <div className="flex flex-wrap gap-2">
+              <Tag>Medical AI</Tag>
+              <Tag>Computer Vision</Tag>
+              <Tag>Cybersecurity</Tag>
+              <Tag>Educational Tech</Tag>
+              <Tag>Edge Computing</Tag>
+              <Tag>Human-AI Interaction</Tag>
+            </div>
+          </Glass>
+          <Glass className="rounded-2xl p-6 flex-1">
+            <h3 className="font-display tracking-tightest text-white font-medium mb-3">Current Focus</h3>
+            <ul className="text-sm text-white/70 space-y-2">
+              <li className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                Hyperspectral Imaging for Agricultural Applications
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                Local LLM Deployment & Optimization
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                Java Learning Platform with Integrated IDE
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                AI-Powered Cybersecurity Solutions
+              </li>
+            </ul>
           </Glass>
         </div>
       </div>
-    </div>
+    </SectionContainer>
   </section>
 );
 
 const Contact = () => (
   <section id="contact" className="py-14 md:py-20">
-    <div className="max-w-7xl mx-auto px-6">
+    <SectionContainer>
       <SectionTitle title="Contact" kicker="say hello" />
       <Glass className="rounded-2xl p-6">
         <div className="grid md:grid-cols-3 gap-4 text-sm">
@@ -1065,7 +1250,7 @@ const Contact = () => (
           </div>
           <div className="flex items-center gap-2">
             <a
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-white/15 text-white/90 hover:bg-white/10"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10"
               href="https://github.com/Ishrell/"
               target="_blank"
               rel="noreferrer"
@@ -1073,7 +1258,7 @@ const Contact = () => (
               <Github className="size-4" /> GitHub
             </a>
             <a
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-white/15 text-white/90 hover:bg-white/10"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10"
               href="https://www.linkedin.com/in/pushya-saie-raag-e-134960272/"
               target="_blank"
               rel="noreferrer"
@@ -1083,7 +1268,7 @@ const Contact = () => (
           </div>
         </div>
       </Glass>
-    </div>
+    </SectionContainer>
   </section>
 );
 
@@ -1096,13 +1281,19 @@ const Footer = () => (
 export default function PortfolioApp() {
   const { accent, setAccent } = useAccent();
 
+  // Enforce dark-only UI and set global accent variables
   useEffect(() => {
-    document.documentElement.classList.add("dark"); // full dark mode
+    document.documentElement.classList.add("dark");
     document.body.className = "bg-[#0B0F19] text-white antialiased";
-  }, []);
+    // populate CSS accent variables (controlled, subtle glow)
+    const a = accent || "#8B5CF6";
+    document.documentElement.style.setProperty("--accent", a);
+    document.documentElement.style.setProperty("--accent-soft", "#6D28D9");
+    document.documentElement.style.setProperty("--accent-glow", `${a}33`); // subtle translucent glow
+  }, [accent]);
 
   return (
-    <div className="min-h-dvh relative bg-[#0A0A0F]">
+    <div className={`min-h-dvh relative bg-[#0A0A0F] font-sans`}>
       <GridBackground />
       <FloatingParticles />
 
@@ -1115,64 +1306,84 @@ export default function PortfolioApp() {
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="mt-4">
-                         <Glass variant="dark" className="rounded-2xl px-4 py-2 animate-pulse-glow">
+            <Glass variant="dark" className="px-4 py-2">
               <div className="flex items-center justify-between">
                 <motion.div 
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.03 }}
                   className="flex items-center gap-3 cursor-pointer"
                 >
-                  <motion.div 
-                    className="size-6 rounded-md"
-                    style={{ background: "var(--accent)" }}
-                    animate={{ rotate: [0, 360] }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                  <div 
+                    className="size-6"
+                    style={{ background: "var(--accent)", borderRadius: "50%" }}
                   />
-                  <span className="font-semibold tracking-tight">Pushya • Portfolio</span>
+                  <span className="font-semibold tracking-tight text-white">Pushya • Portfolio</span>
                 </motion.div>
                 <nav className="hidden md:flex items-center gap-1 text-sm">
                   {[
                     { href: "#about", label: "About" },
                     { href: "#projects", label: "Projects" },
                     { href: "#skills", label: "Skills" },
-                    { href: "#certifications", label: "Certifications" },
+                    { href: "#credentials", label: "Credentials" },
+                    { href: "#leadership", label: "Leadership" },
                     { href: "#education", label: "Education" },
                     { href: "#contact", label: "Contact" },
                   ].map((i) => (
                     <motion.a
                       key={i.href}
                       href={i.href}
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      className="px-3 py-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
+                      whileHover={{ scale: 1.03, y: -2 }}
+                      className="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/6 transition"
                     >
                       {i.label}
                     </motion.a>
                   ))}
                 </nav>
-                <motion.a
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  href="/resume.pdf"
-                  className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-black bg-[var(--accent)] hover:brightness-110 transition text-sm"
-                >
-                  <Download className="size-4" /> Resume
-                </motion.a>
+                <div className="flex items-center gap-2">
+                  <motion.a
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    href="/resume.pdf"
+                    className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 text-sm text-black bg-[var(--accent)] hover:brightness-105 transition"
+                  >
+                    <Download className="size-4" /> Resume
+                  </motion.a>
+                </div>
               </div>
             </Glass>
           </div>
         </div>
       </motion.div>
 
-      {/* Content */}
-      <main className="pt-24">
-        <Hero />
-        <About />
-        <Projects />
-        <section id="skills-anchor"><Skills /></section>
-        <Certifications />
-        <section id="leadership-anchor"><Leadership /></section>
-        <Education />
-        <Contact />
-        <Footer />
+      {/* Content: full-viewport sections with vertical scroll snapping */}
+      <main className="pt-24 h-screen overflow-y-auto snap-y snap-mandatory">
+        <SectionBlock id="hero">
+          <Hero />
+        </SectionBlock>
+        <SectionBlock id="about">
+          <About />
+        </SectionBlock>
+        <SectionBlock id="projects">
+          <Projects />
+        </SectionBlock>
+        {/* Combined section: Credentials (new word) — merges internships + certifications */}
+        <SectionBlock id="credentials">
+          <InternCerts />
+        </SectionBlock>
+        <SectionBlock id="skills">
+          <Skills />
+        </SectionBlock>
+        <SectionBlock id="leadership">
+          <Leadership />
+        </SectionBlock>
+        <SectionBlock id="education">
+          <Education />
+        </SectionBlock>
+        <SectionBlock id="contact">
+          <Contact />
+        </SectionBlock>
+        <SectionBlock id="footer">
+          <Footer />
+        </SectionBlock>
       </main>
 
       <Dock />
