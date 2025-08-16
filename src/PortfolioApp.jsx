@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
-import { motion, useScroll, useTransform, useSpring, useInView, useReducedMotion } from "framer-motion";
+import React, { useEffect, useState, useRef, useMemo, useContext } from "react";
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useInView, useReducedMotion } from "framer-motion";
 import "./index.css";
 import { Github, Linkedin, Mail, ExternalLink, Download, ArrowRight, Sparkles, Cpu, Server, Palette, Calendar, Clock, MessageSquare, Zap, Target, TrendingUp } from "lucide-react";
 
@@ -7,11 +7,11 @@ import { Github, Linkedin, Mail, ExternalLink, Download, ArrowRight, Sparkles, C
 // TailwindCSS required. All content is in one file.
 
 const ACCENTS = [
+  { name: "Amber", value: "#F59E0B" },
   { name: "Cyan", value: "#06B6D4" }, // primary
-  { name: "Indigo", value: "#6366F1" },
   { name: "Violet", value: "#8B5CF6" },
   { name: "Magenta", value: "#EC4899" },
-  { name: "Amber", value: "#F59E0B" },
+  { name: "Indigo", value: "#6366F1" },
 ];
 
 function useAccent() {
@@ -25,19 +25,32 @@ function useAccent() {
     localStorage.setItem("accent", accent);
   }, [accent]);
   // when user calls setAccent manually, mark as locked so section auto-swaps won't override
-  const setAccentLocked = (value) => {
-    localStorage.setItem('accent', value);
-    localStorage.setItem('accentLocked', '1');
+  const setAccentRaw = (value) => {
     setAccent(value);
+    try { localStorage.setItem('accent', value); } catch (e) {}
   };
 
-  return { accent, setAccent: setAccentLocked };
+  const setAccentLocked = (value) => {
+    setAccentRaw(value);
+    try { localStorage.setItem('accentLocked', '1'); } catch (e) {}
+  };
+
+  return { accent, setAccent: setAccentLocked, setAccentRaw };
 }
 
-const GLASS_ROUNDED = "rounded-2xl";
+// Helper: returns motion props guarded by reduced-motion preference
+function useMotionProps() {
+  const reduce = useReducedMotion();
+  return (opts) => (reduce ? {} : opts);
+}
+
+const GLASS_ROUNDED = "rounded-[var(--radius)]";
+
+// Lightweight context to toggle a 'lite' UI mode (disable particles/extra motion)
+const LiteContext = React.createContext({ liteMode: false, setLiteMode: () => {} });
 const Glass = ({ className = "", children, variant = "default" }) => {
   // subtle shadow for depth; keep glass variants for color presets
-  const baseClasses = `${GLASS_ROUNDED} backdrop-blur-xl border shadow-md hover:shadow-lg transition-all duration-300`;
+  const baseClasses = `${GLASS_ROUNDED} backdrop-blur-xl border shadow-md transition-colors transition-transform transition-shadow duration-300`;
   const variants = {
     default: "glass",
     dark: "glass-dark",
@@ -50,20 +63,23 @@ const Glass = ({ className = "", children, variant = "default" }) => {
   );
 };
 
-const Tag = ({ children }) => (
+const Tag = React.memo(({ children }) => (
   <motion.span 
-  whileHover={{ scale: 1.05, y: -2 }}
-  className="px-2.5 py-1 rounded-2xl text-xs border border-purple-500/30 bg-purple-500/10 text-purple-300 cursor-pointer transition-all duration-300"
+    whileHover={{ scale: 1.05, y: -2 }}
+    className="px-2.5 py-1 text-xs border border-purple-500/30 bg-purple-500/10 text-purple-300 cursor-pointer transition-transform transition-colors duration-300"
   >
     {children}
   </motion.span>
-);
+));
 
 // Interactive 3D Card Component
 const InteractiveCard = ({ children, className = "", intensity = 15 }) => {
   const cardRef = useRef(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const { liteMode } = useContext(LiteContext);
+  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -87,6 +103,15 @@ const InteractiveCard = ({ children, className = "", intensity = 15 }) => {
     { stiffness: 300, damping: 30 }
   );
 
+  if (reduceMotion || isTouch || liteMode) {
+    // Respect reduced motion: render a static container without springs / transforms
+    return (
+      <div ref={cardRef} className={`${className}`}>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <motion.div
       ref={cardRef}
@@ -99,7 +124,7 @@ const InteractiveCard = ({ children, className = "", intensity = 15 }) => {
         rotateY,
         scale,
       }}
-      className={`${className} perspective-3d transition-all duration-300`}
+    className={`${className} perspective-3d transition-transform duration-300`}
     >
       {children}
     </motion.div>
@@ -107,7 +132,7 @@ const InteractiveCard = ({ children, className = "", intensity = 15 }) => {
 };
 
 // Animated Progress Bar
-const ProgressBar = ({ skill, percentage, color = "var(--accent)" }) => {
+const ProgressBar = React.memo(({ skill, percentage, color = "var(--accent)" }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   
@@ -117,12 +142,12 @@ const ProgressBar = ({ skill, percentage, color = "var(--accent)" }) => {
         <span className="text-sm text-purple-200 font-medium">{skill}</span>
         <span className="text-xs text-purple-300 font-semibold">{percentage}%</span>
       </div>
-      <div className="h-3 bg-purple-900/30 rounded-full overflow-hidden border border-purple-500/20">
+      <div className="h-3 bg-purple-900/30 overflow-hidden border border-purple-500/20">
         <motion.div
           initial={{ width: 0 }}
           animate={isInView ? { width: `${percentage}%` } : { width: 0 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
-          className="h-full rounded-full relative"
+          className="h-full relative"
           style={{ 
             background: `linear-gradient(90deg, ${color}, ${color}dd)`,
             boxShadow: `0 0 10px ${color}40`
@@ -132,24 +157,26 @@ const ProgressBar = ({ skill, percentage, color = "var(--accent)" }) => {
             initial={{ opacity: 0 }}
             animate={isInView ? { opacity: [0, 1, 0] } : { opacity: 0 }}
             transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-            className="absolute inset-0 bg-white/20 rounded-full"
+            className="absolute inset-0 bg-white/20"
           />
         </motion.div>
       </div>
     </div>
   );
-};
+});
 
-// Floating Particles Background
+// Floating Particles Background (optimized: hidden on touch / reduced motion / lite)
 const FloatingParticles = () => {
   const reduceMotion = useReducedMotion();
-  if (reduceMotion) return null;
+  const { liteMode } = useContext(LiteContext);
+  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  if (reduceMotion || isTouch || liteMode) return null;
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {[...Array(16)].map((_, i) => (
+    <div className="floating-particles fixed inset-0 pointer-events-none overflow-hidden">
+      {[...Array(12)].map((_, i) => (
         <motion.div
           key={i}
-          className={`absolute rounded-full ${
+          className={`absolute rounded-[calc(var(--radius)/2)] ${
             i % 3 === 0 ? 'w-2 h-2 bg-purple-400/40' :
             i % 3 === 1 ? 'w-1 h-1 bg-pink-400/30' :
             'w-0.5 h-0.5 bg-blue-400/50'
@@ -165,7 +192,7 @@ const FloatingParticles = () => {
             opacity: [0, 1, 0]
           }}
           transition={{
-            duration: Math.random() * 25 + 15,
+            duration: Math.random() * 25 + 12,
             repeat: Infinity,
             ease: "linear",
             delay: Math.random() * 5
@@ -175,7 +202,6 @@ const FloatingParticles = () => {
     </div>
   );
 };
-
 // Typing Effect Component
 const TypingEffect = ({ text, className = "" }) => {
   const [displayText, setDisplayText] = useState("");
@@ -231,211 +257,162 @@ const SectionContainer = ({ children, className = "" }) => (
   </div>
 );
 
-// Central internships data (used by credentials view)
-const INTERNSHIPS_DATA = [
-  {
-    company: "Smartbridge (SmartInternz)",
-    role: "Intern — AI for Cybersecurity",
-    dates: "April 2024",
-    bullets: [
-      "Studied and applied ML techniques for anomaly detection & threat intelligence.",
-      "Hands-on with IBM QRadar SIEM, Kali Linux, MobaXterm, Python scripting and API integration.",
-      "Contributed to a team AI-driven threat detection project and 10+ cybersecurity mini-projects."
-    ],
-    tech: ["IBM QRadar", "Kali Linux", "Python", "API Integration", "Prompt Engineering"],
-    outcomes: "Contributed to a production-ready threat detection prototype and improved practical SIEM workflows."
-  },
-  {
-    company: "Ethnus",
-    role: "Trainee — MERN Full Stack",
-    dates: "April 2024",
-    bullets: [
-      "Designed, developed and deployed web applications using MongoDB, Express, React and Node.js.",
-      "Built a collaborative project management platform and completed multiple coding challenges.",
-      "Participated in weekly assignments, quizzes, and a final project review with team demos."
-    ],
-    tech: ["MongoDB", "Express.js", "React", "Node.js", "Bootstrap"],
-    outcomes: "Delivered a deployed MERN project and improved full-stack development workflows across the team."
-  }
-];
-
-const InternshipsList = ({ compact = false }) => (
-  <div className="grid md:grid-cols-2 gap-6">
-    {INTERNSHIPS_DATA.map((it, idx) => (
-      <motion.div key={it.company} initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: idx * 0.06 }} viewport={{ once: true }}>
-        <InteractiveCard intensity={6}>
-          <Glass className="rounded-2xl p-6 h-full">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="font-display tracking-tightest text-white font-semibold text-lg">{it.company}</h3>
-                <div className="text-sm text-white/70">{it.role} • <span className="text-white/60">{it.dates}</span></div>
-              </div>
-              <div className="text-xs text-[var(--accent)] font-semibold">{it.tech.join(' • ')}</div>
-            </div>
-
-            <ul className="text-sm text-white/70 list-disc list-inside space-y-2 mb-4">
-              {it.bullets.map((b, i) => (
-                <li key={i}>{b}</li>
-              ))}
-            </ul>
-
-            <div className="text-sm text-white/70">
-              <strong className="text-white">Outcome:</strong> {it.outcomes}
-            </div>
-          </Glass>
-        </InteractiveCard>
-      </motion.div>
-    ))}
-  </div>
-);
-
-// SectionBlock: subtle entrance animation + once-only glow when the section scrolls into view
-const SectionBlock = ({ id, children }) => {
+// Lazy mount children when they enter the viewport (simple hook + wrapper)
+const LazyMount = ({ children }) => {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, threshold: 0.36 });
-  const reduceMotion = useReducedMotion();
-
-  const initial = reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.995 };
-  const animate = inView ? (reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }) : {};
-  const transition = reduceMotion ? {} : { duration: 0.72, ease: "easeOut" };
-
+  const inView = useInView(ref, { once: true, margin: '0px' });
   return (
-    <div id={id} className="snap-start min-h-screen flex items-center justify-center">
-      <motion.div
-        ref={ref}
-        initial={initial}
-        animate={animate}
-        transition={transition}
-        className={`w-full transition-all duration-700 ${inView ? 'pointer-events-auto' : 'pointer-events-none'}`}
-        style={inView ? { boxShadow: '0 18px 60px rgba(2,6,23,0.65)' } : {}}
-        onViewportEnter={() => {
-          try {
-            const locked = localStorage.getItem('accentLocked');
-            if (!locked) {
-              const secColor = SECTION_ACCENTS[id] || SECTION_ACCENTS['hero'];
-              document.documentElement.style.setProperty('--accent', secColor);
-            }
-          } catch (e) { /* ignore */ }
-        }}
-      >
-        {children}
-      </motion.div>
+    <div ref={ref}>
+      {inView ? children : <div style={{ minHeight: 120 }} />}
     </div>
   );
 };
 
-// Section -> accent map (used when user hasn't manually selected an accent)
-const SECTION_ACCENTS = {
-  hero: ACCENTS[0].value,
-  about: ACCENTS[2].value,
-  projects: ACCENTS[1].value,
-  credentials: ACCENTS[3].value,
-  skills: ACCENTS[0].value,
-  leadership: ACCENTS[4].value,
-  education: ACCENTS[2].value,
-  contact: ACCENTS[0].value,
+// Lightweight wrapper used for page sections — provides consistent snapping and spacing
+const SectionBlock = ({ id, children }) => (
+  <section id={id} className="snap-start snap-always w-full">
+    {children}
+  </section>
+);
+
+// Central internships data (used by credentials view)
+const INTERNSHIPS_DATA = null; // memoized in component with useMemo
+
+// Single internship item component (respects reduced motion)
+const InternshipItem = ({ item, idx }) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      key={item.company}
+      initial={reduceMotion ? { opacity: 1, y: 0 } : { y: 30, opacity: 0 }}
+      whileInView={reduceMotion ? undefined : { y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, delay: idx * 0.06 }}
+      viewport={{ once: true }}
+    >
+      <InteractiveCard intensity={6}>
+  <Glass className="p-6 h-full">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="font-display tracking-tightest text-white font-semibold text-lg">{item.company}</h3>
+              <div className="text-sm text-white/70">{item.role} • <span className="text-white/60">{item.dates}</span></div>
+            </div>
+            <div className="text-xs text-[var(--accent)] font-semibold">{item.tech.join(' • ')}</div>
+          </div>
+
+          <ul className="text-sm text-white/70 list-disc list-inside space-y-2 mb-4">
+            {item.bullets.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
+          </ul>
+
+          <div className="text-sm text-white/70">
+            <strong className="text-white">Outcome:</strong> {item.outcomes}
+          </div>
+        </Glass>
+      </InteractiveCard>
+    </motion.div>
+  );
 };
 
+const InternshipsList = ({ compact = false }) => (
+  <div className="space-y-4">
+    {(
+      // memoize internships to avoid reallocation
+      (() => {
+        const items = [
+          {
+            company: "Smartbridge (SmartInternz)",
+            role: "Intern — AI for Cybersecurity",
+            dates: "April 2024",
+            bullets: [
+              "Studied and applied ML techniques for anomaly detection & threat intelligence.",
+              "Hands-on with IBM QRadar SIEM, Kali Linux, MobaXterm, Python scripting and API integration.",
+              "Contributed to a team AI-driven threat detection project and 10+ cybersecurity mini-projects."
+            ],
+            tech: ["IBM QRadar", "Kali Linux", "Python", "API Integration", "Prompt Engineering"],
+            outcomes: "Contributed to a production-ready threat detection prototype and improved practical SIEM workflows."
+          },
+          {
+            company: "Ethnus",
+            role: "Trainee — MERN Full Stack",
+            dates: "April 2024",
+            bullets: [
+              "Designed, developed and deployed web applications using MongoDB, Express, React and Node.js.",
+              "Built a collaborative project management platform and completed multiple coding challenges.",
+              "Participated in weekly assignments, quizzes, and a final project review with team demos."
+            ],
+            tech: ["MongoDB", "Express.js", "React", "Node.js", "Bootstrap"],
+            outcomes: "Delivered a deployed MERN project and improved full-stack development workflows across the team."
+          }
+        ];
+        return items.map((item, idx) => <InternshipItem key={item.company} item={item} idx={idx} />);
+      })()
+    )}
+  </div>
+);
+
 const GridBackground = () => (
-  <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 animated-bg bg-[#06070b]">
-    {/* Multiple radial spotlights (subtle, low-opacity) */}
-    <div className="absolute inset-0 bg-[radial-gradient(1200px_600px_at_70%_-10%,rgba(139,92,246,.06),transparent_60%)]" />
-    <div className="absolute inset-0 bg-[radial-gradient(800px_400px_at_30%_80%,rgba(236,72,153,.04),transparent_60%)]" />
-    
-    {/* Enhanced grid with perspective */}
-    <svg className="absolute inset-0 w-full h-full opacity-[0.08]" xmlns="http://www.w3.org/2000/svg">
+  <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <svg className="w-full h-full" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-          <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(139,92,246,0.3)" strokeWidth="0.8" />
-        </pattern>
-        <pattern id="grid-small" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(139,92,246,0.1)" strokeWidth="0.4" />
-        </pattern>
+        <linearGradient id="g1" x1="0" x2="1">
+          <stop offset="0%" stopColor="rgba(139,92,246,0.06)" />
+          <stop offset="100%" stopColor="transparent" />
+        </linearGradient>
       </defs>
-      <rect width="100%" height="100%" fill="url(#grid)" />
-      <rect width="100%" height="100%" fill="url(#grid-small)" />
     </svg>
-    
-    {/* Multiple flowing accent blobs */}
+
     <motion.div
       initial={{ opacity: 0 }}
-      animate={{ 
-        opacity: [0.06, 0.12, 0.06], 
-        x: [0, 30, -15, 0], 
-        y: [0, -8, 20, 0],
-        scale: [1, 1.04, 1]
-      }}
+      animate={{ opacity: [0.06, 0.12, 0.06], x: [0, 30, -15, 0], y: [0, -8, 20, 0], scale: [1, 1.04, 1] }}
       transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute -top-28 left-1/3 w-[720px] h-[720px] rounded-full blur-[140px]"
+    className="absolute -top-28 left-1/3 w-[720px] h-[720px] blur-[140px]"
       style={{ background: "radial-gradient(closest-side, var(--accent), transparent)" }}
     />
-    
+
     <motion.div
       initial={{ opacity: 0 }}
-      animate={{ 
-        opacity: [0.04, 0.1, 0.04], 
-        x: [0, -20, 12, 0], 
-        y: [0, 12, -10, 0],
-        scale: [1, 0.98, 1]
-      }}
+      animate={{ opacity: [0.04, 0.1, 0.04], x: [0, -20, 12, 0], y: [0, 12, -10, 0], scale: [1, 0.98, 1] }}
       transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute top-1/2 right-1/4 w-[520px] h-[520px] rounded-full blur-[100px]"
+  className="absolute top-1/2 right-1/4 w-[520px] h-[520px] blur-[100px]"
       style={{ background: "radial-gradient(closest-side, var(--accent-glow), transparent)" }}
     />
-    
+
     <motion.div
       initial={{ opacity: 0 }}
-      animate={{ 
-        opacity: [0.06, 0.1, 0.06], 
-        x: [0, 18, -10, 0], 
-        y: [0, -18, 14, 0],
-        rotate: [0, 120, 240]
-      }}
+      animate={{ opacity: [0.06, 0.1, 0.06], x: [0, 18, -10, 0], y: [0, -18, 14, 0], rotate: [0, 120, 240] }}
       transition={{ duration: 32, repeat: Infinity, ease: "easeInOut" }}
-      className="absolute bottom-1/4 left-1/4 w-[420px] h-[420px] rounded-full blur-[80px]"
+  className="absolute bottom-1/4 left-1/4 w-[420px] h-[420px] blur-[80px]"
       style={{ background: "radial-gradient(closest-side, #EC4899, transparent)" }}
     />
-    
-    {/* Floating particles */}
-  {[...Array(8)].map((_, i) => (
+
+    {[...Array(8)].map((_, i) => (
       <motion.div
         key={i}
-        className="absolute w-1 h-1 bg-purple-400 rounded-full"
-        initial={{
-          x: Math.random() * window.innerWidth,
-          y: Math.random() * window.innerHeight,
-          opacity: 0
-        }}
-        animate={{
-          x: Math.random() * window.innerWidth,
-          y: Math.random() * window.innerHeight,
-          opacity: [0, 0.8, 0]
-        }}
-        transition={{
-          duration: Math.random() * 15 + 10,
-          repeat: Infinity,
-          ease: "linear"
-        }}
+  className="absolute w-1 h-1 bg-purple-400"
+        initial={{ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight, opacity: 0 }}
+        animate={{ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight, opacity: [0, 0.8, 0] }}
+        transition={{ duration: Math.random() * 15 + 10, repeat: Infinity, ease: "linear" }}
       />
     ))}
   </div>
 );
 
-const Dock = () => (
-  <Glass variant="purple" className="fixed bottom-6 left-1/2 -translate-x-1/2 px-3 py-2 flex items-center gap-1">
+const Dock = ({ active }) => (
+  <Glass variant="purple" className="fixed bottom-6 left-1/2 -translate-x-1/2 px-3 py-2 flex items-center gap-1 z-40">
     {[
       { href: "#about", label: "About" },
       { href: "#projects", label: "Projects" },
-  { href: "#skills", label: "Skills" },
-  { href: "#credentials", label: "Credentials" },
-  { href: "#leadership", label: "Leadership" },
+      { href: "#skills", label: "Skills" },
+      { href: "#credentials", label: "Credentials" },
+      { href: "#leadership", label: "Leadership" },
       { href: "#education", label: "Education" },
       { href: "#contact", label: "Contact" },
     ].map((item) => (
       <a
         key={item.href}
-  href={item.href}
-  className="px-3 py-1.5 rounded-2xl text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+        href={item.href}
+                className={`px-3 py-1.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition ${active === item.href.slice(1) ? 'bg-white/10 text-white scale-105' : ''}`}
       >
         {item.label}
       </a>
@@ -443,7 +420,60 @@ const Dock = () => (
   </Glass>
 );
 
-const AccentPicker = ({ accent, setAccent }) => (
+const MobileNav = ({ open, onClose, active }) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="mobile-nav-overlay"
+          onClick={onClose}
+          role="dialog"
+          aria-modal="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="mobile-nav-drawer"
+            onClick={(e) => e.stopPropagation()}
+            initial={reduceMotion ? {} : { x: 300 }}
+            animate={reduceMotion ? {} : { x: 0 }}
+            exit={reduceMotion ? {} : { x: 300 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <div className="font-semibold text-lg">Menu</div>
+              <button onClick={onClose} className="px-2 py-2 bg-white/5">Close</button>
+            </div>
+            <nav className="flex flex-col">
+              {[
+                { href: "#about", label: "About" },
+                { href: "#projects", label: "Projects" },
+                { href: "#skills", label: "Skills" },
+                { href: "#credentials", label: "Credentials" },
+                { href: "#leadership", label: "Leadership" },
+                { href: "#education", label: "Education" },
+                { href: "#contact", label: "Contact" },
+              ].map((i) => (
+                <a
+                  key={i.href}
+                  href={i.href}
+                  onClick={onClose}
+                  className={`text-white/90 hover:bg-white/6 ${active === i.href.slice(1) ? 'bg-white/6 rounded-lg' : ''}`}
+                >
+                  {i.label}
+                </a>
+              ))}
+            </nav>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const AccentPicker = ({ accent, setAccent, onAuto }) => (
   <Glass variant="dark" className="fixed top-6 right-6 p-3">
     <div className="flex items-center gap-2 text-white/70 text-xs mb-2">
       <Palette className="size-4" /> Accent
@@ -454,7 +484,7 @@ const AccentPicker = ({ accent, setAccent }) => (
           key={c.value}
           aria-label={c.name}
           onClick={() => setAccent(c.value)}
-          className="h-6 w-6 rounded-2xl border border-white/20 hover:scale-[1.05] transition"
+          className="h-6 w-6 border border-white/20 hover:scale-[1.05] transition"
           style={{
             background: c.value,
             outline: accent === c.value ? `2px solid ${c.value}` : "none",
@@ -465,8 +495,8 @@ const AccentPicker = ({ accent, setAccent }) => (
       <button
         aria-label="Auto accents"
         title="Auto accents"
-        onClick={() => { localStorage.removeItem('accentLocked'); alert('Accent auto mode enabled — sections will control accents.'); }}
-        className="h-6 w-6 rounded-2xl border border-white/20 flex items-center justify-center text-xs text-white/80 hover:scale-[1.05] transition"
+        onClick={() => { try { localStorage.removeItem('accentLocked'); } catch(e){}; if(onAuto) onAuto(); else alert('Accent auto mode enabled — sections will control accents.'); }}
+        className="h-6 w-6 border border-white/20 flex items-center justify-center text-xs text-white/80 hover:scale-[1.05] transition"
       >
         A
       </button>
@@ -492,12 +522,13 @@ const Hero = () => {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
-                             <h1 className=" rounded-2xl font-display tracking-tightest text-4xl md:text-6xl font-bold text-white tracking-tight mb-4">
+                            <h1 className="font-display tracking-tightest text-4xl md:text-6xl font-bold text-white tracking-tight mb-4">
                  <span className="gradient-text">Pushya Saie Raag Enuga</span>
                </h1>
-              <div className=" rounded-2xl h-8 md:h-10 flex items-center">
+
+              <div className="h-8 md:h-10 flex items-center">
                 <TypingEffect 
-                  text="AI/ML researcher & HCI‑minded full‑stack developer — shipped 8 projects used by 5k+ users; published medical‑AI paper."
+                  text="AI/ML researcher & HCI‑minded full‑stack developer — shipped 8 projects approved by Experts; published medical‑AI paper."
                   className="text-white/70 text-lg max-w-2xl"
                 />
               </div>
@@ -513,7 +544,7 @@ const Hero = () => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 href="#projects"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-black bg-[var(--accent)] hover:brightness-110 transition font-medium shadow-md"
+                className="inline-flex items-center gap-2 px-6 py-3 text-black bg-[var(--accent)] hover:brightness-110 transition font-medium shadow-md"
               >
                 Explore Projects <ArrowRight className="size-4" />
               </motion.a>
@@ -521,7 +552,7 @@ const Hero = () => {
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 href="/resume.pdf"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10 transition backdrop-blur-sm"
+                className="inline-flex items-center gap-2 px-6 py-3 border border-white/15 text-white/90 hover:bg-white/10 transition backdrop-blur-sm"
               >
                 <Download className="size-4" /> Resume
               </motion.a>
@@ -539,7 +570,7 @@ const Hero = () => {
                     href={social.href}
                     target={social.label !== "Email" ? "_blank" : undefined}
                     rel={social.label !== "Email" ? "noreferrer" : undefined}
-                    className="p-3 rounded-2xl border border-white/15 text-white/80 hover:text-white hover:bg-white/10 transition-all duration-300"
+                    className="p-3 border border-white/15 text-white/80 hover:text-white hover:bg-white/10 transition-colors duration-300"
                   >
                     <social.icon className="size-5" />
                   </motion.a>
@@ -568,9 +599,9 @@ const Hero = () => {
             className="lg:col-span-5"
           >
                          <InteractiveCard intensity={12}>
-               <Glass variant="purple" className="rounded-2xl p-8 relative overflow-hidden">
+               <Glass variant="purple" className="p-8 relative overflow-hidden">
                 <motion.div
-                  className="absolute -top-10 -right-10 w-20 h-20 rounded-full opacity-20"
+                  className="absolute -top-10 -right-10 w-20 h-20 opacity-20"
                   style={{ background: "var(--accent)" }}
                   animate={{ 
                     scale: [1, 1.2, 1],
@@ -585,28 +616,28 @@ const Hero = () => {
                 <div className="grid grid-cols-2 gap-6 text-sm relative z-10">
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-2xl bg-white/5"
+                    className="space-y-2 p-3 bg-white/5"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">TOEFL</div>
                     <div className="text-white text-2xl font-bold">108</div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-2xl bg-white/5"
+                    className="space-y-2 p-3 bg-white/5"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">IELTS</div>
                     <div className="text-white text-2xl font-bold">8.0</div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-2xl bg-white/5 col-span-2"
+                    className="space-y-2 p-3 bg-white/5 col-span-2"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">Open to</div>
                     <div className="text-white font-medium">AI/ML • Full‑Stack • Product</div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="space-y-2 p-3 rounded-2xl bg-white/5 col-span-2"
+                    className="space-y-2 p-3 bg-white/5 col-span-2"
                   >
                     <div className="text-white/50 text-xs uppercase tracking-wider">Location</div>
                     <div className="text-white font-medium">Texas State University</div>
@@ -623,7 +654,7 @@ const Hero = () => {
 };
 
 const SkillCard = ({ title, icon: Icon, children }) => (
-  <Glass className="rounded-2xl p-5 hover:bg-white/7 transition">
+  <Glass className="p-5 hover:bg-white/7 transition">
     <div className="flex items-center gap-3 mb-2">
       {Icon ? <Icon className="size-5 text-[var(--accent)]" /> : null}
       <h3 className="font-display tracking-tightest font-medium text-white">{title}</h3>
@@ -633,7 +664,7 @@ const SkillCard = ({ title, icon: Icon, children }) => (
 );
 
 const Projects = () => {
-  const projects = [
+  const projects = useMemo(() => [
     {
       title: "Bone Cancer Detection (CNN)",
       href: "https://ieeexplore.ieee.org/document/10941267",
@@ -689,7 +720,7 @@ const Projects = () => {
       solution: "Used EfficientDet and NAS for a compact, fast model tuned for low-latency inference.",
       outcome: "Achieved real-time detection with strong precision in test scenarios."
     }
-  ];
+  ], []);
 
   return (
     <section id="projects" className="py-14 md:py-20">
@@ -697,24 +728,25 @@ const Projects = () => {
         <SectionTitle icon={Sparkles} title="Selected Projects" kicker="work" />
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project, index) => (
-            <motion.div
-              key={project.title}
-              initial={{ y: 50, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
-            >
+          {projects.map((project, index) => {
+            return (
+              <motion.div
+                key={project.title}
+                initial={{ y: 50, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+              >
                              <InteractiveCard intensity={10}>
-                 <Glass variant="dark" className="group rounded-2xl p-8 relative overflow-hidden h-full">
-                                     <motion.div
-                     className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none"
+                 <Glass variant="dark" className="group p-8 relative overflow-hidden h-full">
+                   <motion.div
+                     className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                      style={{
                        background: "radial-gradient(600px 160px at 20% 0%, rgba(139,92,246,0.3), transparent)",
                      }}
                    />
                    <motion.div
-                     className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-all duration-700 pointer-events-none"
+                     className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
                      style={{
                        background: "radial-gradient(400px 120px at 80% 100%, rgba(236,72,153,0.2), transparent)",
                      }}
@@ -725,7 +757,7 @@ const Projects = () => {
                       <div className="text-4xl mb-3">{project.image}</div>
                       <motion.div
                         whileHover={{ scale: 1.1 }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        className={`px-3 py-1 rounded-[calc(var(--radius)/1.6)] text-xs font-medium ${
                           project.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
                           project.status === 'In Progress' ? 'bg-yellow-500/20 text-yellow-400' :
                           'bg-blue-500/20 text-blue-400'
@@ -764,8 +796,9 @@ const Projects = () => {
                   </div>
                 </Glass>
               </InteractiveCard>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
 
         <motion.div
@@ -776,7 +809,7 @@ const Projects = () => {
           className="mt-12"
         >
           <InteractiveCard>
-            <Glass className="rounded-2xl p-8">
+            <Glass className="p-8">
               <h3 className="font-display tracking-tightest text-white font-semibold text-xl mb-6 flex items-center gap-3">
                 <Zap className="size-6 text-[var(--accent)]" />
                 Other Highlights
@@ -786,11 +819,11 @@ const Projects = () => {
                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Research Projects</h4>
                   <ul className="space-y-2 text-sm text-white/70">
                     <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                      <div className="w-2 h-2 bg-[var(--accent)]" />
                       Quantum‑Resistant Digital Signatures
                     </li>
                     <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                      <div className="w-2 h-2 bg-[var(--accent)]" />
                       Emotion‑Based Lighting (Feelbright)
                     </li>
                   </ul>
@@ -799,7 +832,7 @@ const Projects = () => {
                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Applications</h4>
                   <ul className="space-y-2 text-sm text-white/70">
                     <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                      <div className="w-2 h-2 rounded-[calc(var(--radius)/2)] bg-[var(--accent)]" />
                       AI Security Dashboard
                     </li>
                     <li className="flex items-center gap-2">
@@ -864,17 +897,28 @@ const InternCerts = () => {
           <div>
             <h4 className="font-display tracking-tightest text-white font-medium mb-4">Certifications</h4>
             <div className="grid md:grid-cols-1 gap-4">
-              {certs.map((cert) => (
-                <InteractiveCard key={cert.title} intensity={4}>
-                  <Glass className="rounded-2xl p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="text-2xl">{cert.icon}</div>
-                      <div className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">{cert.status}</div>
-                    </div>
-                    <h3 className="font-display tracking-tightest text-white font-semibold text-lg">{cert.title}</h3>
-                    <p className="text-sm text-white/70">{cert.issuer} • {cert.category}</p>
-                  </Glass>
-                </InteractiveCard>
+              {certs.map((cert, idx) => (
+                <motion.div
+                  key={cert.title}
+                  initial={{ y: 20, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.6, delay: idx * 0.06 }}
+                  viewport={{ once: true }}
+                >
+                  <InteractiveCard intensity={4}>
+                    <Glass className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="text-2xl" aria-hidden>{cert.icon}</div>
+                        <div className="px-2 py-1 rounded-[calc(var(--radius)/1.6)] text-xs font-medium bg-green-500/20 text-green-400">{cert.status}</div>
+                      </div>
+                      <h3 className="font-display tracking-tightest text-white font-semibold text-lg">{cert.title}</h3>
+                      <p className="text-sm text-white/70">{cert.issuer} • {cert.category}</p>
+                      <div className="mt-3">
+                        <Tag>{cert.category}</Tag>
+                      </div>
+                    </Glass>
+                  </InteractiveCard>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -885,7 +929,7 @@ const InternCerts = () => {
 };
 
 const Skills = () => {
-  const skillsData = [
+  const skillsData = useMemo(() => [
     { category: "Full Stack Development", icon: Server, skills: [
       { name: "React", percentage: 95 },
       { name: "Node.js", percentage: 90 },
@@ -904,7 +948,7 @@ const Skills = () => {
       { name: "Penetration Testing", percentage: 85 },
       { name: "Network Security", percentage: 87 }
     ]}
-  ];
+  ], []);
 
   return (
     <section id="skills" className="py-14 md:py-20">
@@ -912,33 +956,36 @@ const Skills = () => {
         <SectionTitle icon={Cpu} title="Skills" kicker="capabilities" />
         
         <div className="grid lg:grid-cols-3 gap-8 mb-12">
-          {skillsData.map((category, index) => (
-            <motion.div
-              key={category.category}
-              initial={{ y: 50, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
-            >
-                             <InteractiveCard intensity={8}>
-                 <Glass variant="purple" className="rounded-2xl p-6 h-full">
-                  <div className="flex items-center gap-3 mb-6">
-                    <category.icon className="size-6 text-[var(--accent)]" />
-                    <h3 className="font-display tracking-tightest font-semibold text-white text-lg">{category.category}</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {category.skills.map((skill) => (
-                      <ProgressBar 
-                        key={skill.name}
-                        skill={skill.name} 
-                        percentage={skill.percentage}
-                      />
-                    ))}
-                  </div>
-                </Glass>
-              </InteractiveCard>
-            </motion.div>
-          ))}
+          {skillsData.map((category, index) => {
+            const reduceMotionLocal = useReducedMotion();
+            return (
+              <motion.div
+                key={category.category}
+                initial={reduceMotionLocal ? { y: 0, opacity: 1 } : { y: 50, opacity: 0 }}
+                whileInView={reduceMotionLocal ? undefined : { y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+              >
+                <InteractiveCard intensity={8}>
+                  <Glass variant="purple" className="p-6 h-full">
+                    <div className="flex items-center gap-3 mb-6">
+                      <category.icon className="size-6 text-[var(--accent)]" />
+                      <h3 className="font-display tracking-tightest font-semibold text-white text-lg">{category.category}</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {category.skills.map((skill) => (
+                        <ProgressBar 
+                          key={skill.name}
+                          skill={skill.name} 
+                          percentage={skill.percentage}
+                        />
+                      ))}
+                    </div>
+                  </Glass>
+                </InteractiveCard>
+              </motion.div>
+            );
+          })}
         </div>
 
         <motion.div
@@ -948,7 +995,7 @@ const Skills = () => {
           viewport={{ once: true }}
         >
           <InteractiveCard>
-            <Glass className="rounded-2xl p-8">
+            <Glass className="p-8">
               <h3 className="font-display tracking-tightest text-white font-semibold text-xl mb-6 flex items-center gap-3">
                 <Target className="size-6 text-[var(--accent)]" />
                 Additional Expertise
@@ -1006,6 +1053,11 @@ const Skills = () => {
                      <Tag>Adobe CC</Tag>
                      <Tag>Git</Tag>
                      <Tag>Docker</Tag>
+                     <Tag>Microsoft Word</Tag>
+                     <Tag>Microsoft Excel</Tag>
+                     <Tag>Microsoft PowerPoint</Tag>
+                     <Tag>Microsoft OneNote</Tag>
+                     <Tag>Canva</Tag>
                    </div>
                  </div>
                </div>
@@ -1018,7 +1070,7 @@ const Skills = () => {
 };
 
 const Certifications = () => {
-  const certifications = [
+  const certifications = useMemo(() => [
     {
       title: "MERN Stack Certification",
       issuer: "Ethnus",
@@ -1061,7 +1113,7 @@ const Certifications = () => {
       category: "Business",
       status: "Certified"
     }
-  ];
+  ], []);
 
   return (
     <section id="certifications" className="py-14 md:py-20">
@@ -1069,21 +1121,23 @@ const Certifications = () => {
         <SectionTitle icon={Target} title="Certifications" kicker="credentials" />
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {certifications.map((cert, index) => (
+          {certifications.map((cert, index) => {
+            const reduceMotionLocal = useReducedMotion();
+            return (
             <motion.div
               key={cert.title}
-              initial={{ y: 50, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
+              initial={reduceMotionLocal ? { y: 0, opacity: 1 } : { y: 50, opacity: 0 }}
+              whileInView={reduceMotionLocal ? undefined : { y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               viewport={{ once: true }}
             >
                              <InteractiveCard intensity={6}>
-                 <Glass variant="purple" className="rounded-2xl p-6 h-full group hover:bg-purple-500/10 transition-all duration-300">
+                 <Glass variant="purple" className="p-6 h-full group hover:bg-purple-500/10 transition-colors duration-300">
                   <div className="flex items-start justify-between mb-4">
                     <div className="text-3xl">{cert.icon}</div>
                     <motion.div
                       whileHover={{ scale: 1.1 }}
-                      className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400"
+                      className="px-2 py-1 rounded-[calc(var(--radius)/1.6)] text-xs font-medium bg-green-500/20 text-green-400"
                     >
                       {cert.status}
                     </motion.div>
@@ -1097,7 +1151,8 @@ const Certifications = () => {
                 </Glass>
               </InteractiveCard>
             </motion.div>
-          ))}
+          );
+        })}
         </div>
 
         <motion.div
@@ -1108,7 +1163,7 @@ const Certifications = () => {
           className="mt-12"
         >
           <InteractiveCard>
-            <Glass className="rounded-2xl p-8">
+            <Glass className="p-8">
               <h3 className="font-display tracking-tightest text-white font-semibold text-xl mb-6 flex items-center gap-3">
                 <Zap className="size-6 text-[var(--accent)]" />
                 Professional Development
@@ -1118,7 +1173,7 @@ const Certifications = () => {
                   <h4 className="font-display tracking-tightest text-white/80 font-medium">Technical Expertise</h4>
                   <ul className="space-y-2 text-sm text-white/70">
                     <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                      <div className="w-2 h-2 rounded-[calc(var(--radius)/2)] bg-[var(--accent)]" />
                       Full Stack MERN Development
                     </li>
                     <li className="flex items-center gap-2">
@@ -1161,7 +1216,7 @@ const Leadership = () => (
   <section id="leadership" className="py-14 md:py-20">
   <SectionContainer>
       <SectionTitle title="Leadership" kicker="impact" />
-      <Glass className="rounded-2xl p-6">
+  <Glass className="p-6">
         <h3 className="font-display tracking-tightest text-white font-medium mb-3">AR/VR Club — Co‑Founder & VP</h3>
         <p className="text-sm text-white/70 mb-4">Co‑Founder (2022) & Vice President (2023–2024). Built the club from an idea into a campus-wide program demonstrating AR/VR for education, healthcare, and design.</p>
         <ul className="list-disc list-inside text-sm text-white/70 space-y-2">
@@ -1182,7 +1237,7 @@ const Education = () => (
     <SectionContainer>
       <SectionTitle title="Education" kicker="foundation" />
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Glass className="rounded-2xl p-6">
+  <Glass className="p-6">
           <h3 className="font-display tracking-tightest text-white font-medium">M.S. Computer Science</h3>
           <p className="font-sans text-sm text-white/70 mt-1">Texas State University — Aug 2025 – present</p>
           <p className="font-sans text-sm text-white/70 mt-2">Focus: Medical imaging, hyperspectral analysis, and edge AI deployment. Relevant coursework: Advanced Computer Vision, Deep Learning, Distributed Systems.</p>
@@ -1191,21 +1246,21 @@ const Education = () => (
           </div>
         </Glass>
 
-        <Glass className="rounded-2xl p-6">
+  <Glass className="p-6">
           <h3 className="font-display tracking-tightest text-white font-medium">B.Tech — Computer Science</h3>
           <p className="font-sans text-sm text-white/70 mt-1">Vellore Institute of Technology — May 2025</p>
           <p className="font-sans text-sm text-white/70 mt-2">Major projects: Java learning platform with integrated IDE; Bone cancer detection using CNNs. Relevant topics: Algorithms, OS, Networks, Machine Learning.</p>
           <div className="mt-3 text-sm text-white/70">Honors: Department project award; active in coding clubs and mentoring juniors.</div>
         </Glass>
 
-        <Glass className="rounded-2xl p-6">
+  <Glass className="p-6">
           <h3 className="font-display tracking-tightest text-white font-medium">+2 (CBSE)</h3>
           <p className="font-sans text-sm text-white/70 mt-1">Accord School (CBSE) — Class XII</p>
           <p className="font-sans text-sm text-white/70 mt-2">Concentration: Physics, Chemistry, Mathematics. Coursework emphasized problem solving, laboratory work, and project-based assessments.</p>
           <div className="mt-3 text-sm text-white/70">Activities: Science club lead, math Olympiad participation, inter-school coding workshops.</div>
         </Glass>
 
-        <Glass className="rounded-2xl p-6">
+  <Glass className="p-6">
           <h3 className="font-display tracking-tightest text-white font-medium">Class X (Secondary)</h3>
           <p className="font-sans text-sm text-white/70 mt-1">Kendriya Vidyalaya, Tirupati — Class X</p>
           <p className="font-sans text-sm text-white/70 mt-2">Built strong fundamentals in mathematics and sciences; participated in robotics club and quiz teams.</p>
@@ -1221,7 +1276,7 @@ const About = () => (
     <SectionContainer>
       <SectionTitle title="About Me" kicker="who i am" />
       <div className="grid lg:grid-cols-2 gap-8 items-stretch">
-        <Glass className="rounded-2xl p-6 h-full">
+  <Glass className="p-6 h-full">
           <h3 className="font-display tracking-tightest text-white font-medium mb-4">My Journey</h3>
                      <p className="font-sans text-sm text-white/70 leading-relaxed mb-4">
              I'm a passionate AI/ML researcher, full-stack developer, and cybersecurity specialist with a deep interest in creating 
@@ -1248,7 +1303,7 @@ const About = () => (
            </p>
         </Glass>
         <div className="flex flex-col gap-4 h-full">
-          <Glass className="rounded-2xl p-6 flex-1">
+          <Glass className="p-6 flex-1">
             <h3 className="font-display tracking-tightest text-white font-medium mb-3">Research Interests</h3>
             <div className="flex flex-wrap gap-2">
               <Tag>Medical AI</Tag>
@@ -1259,19 +1314,19 @@ const About = () => (
               <Tag>Human-AI Interaction</Tag>
             </div>
           </Glass>
-          <Glass className="rounded-2xl p-6 flex-1">
+          <Glass className="p-6 flex-1">
             <h3 className="font-display tracking-tightest text-white font-medium mb-3">Current Focus</h3>
             <ul className="text-sm text-white/70 space-y-2">
               <li className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                <div className="w-2 h-2 rounded-[calc(var(--radius)/2)] bg-[var(--accent)]" />
                 Hyperspectral Imaging for Agricultural Applications
               </li>
               <li className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                <div className="w-2 h-2 rounded-[calc(var(--radius)/2)] bg-[var(--accent)]" />
                 Local LLM Deployment & Optimization
               </li>
               <li className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                <div className="w-2 h-2 rounded-[calc(var(--radius)/2)] bg-[var(--accent)]" />
                 Java Learning Platform with Integrated IDE
               </li>
               <li className="flex items-center gap-2">
@@ -1290,7 +1345,7 @@ const Contact = () => (
   <section id="contact" className="py-14 md:py-20">
     <SectionContainer>
       <SectionTitle title="Contact" kicker="say hello" />
-      <Glass className="rounded-2xl p-6">
+  <Glass className="p-6">
         <div className="grid md:grid-cols-3 gap-6 text-sm">
           <div className="md:col-span-2">
             <form
@@ -1300,21 +1355,21 @@ const Contact = () => (
             >
               <label className="block">
                 <div className="text-white/50 mb-1">Name</div>
-                <input name="name" required className="w-full rounded-2xl p-3 bg-white/3 border border-white/10 text-white" />
+                <input name="name" required className="w-full rounded-[var(--radius)] p-3 bg-white/3 border border-white/10 text-white" />
               </label>
 
               <label className="block">
                 <div className="text-white/50 mb-1">Email</div>
-                <input name="email" type="email" required className="w-full rounded-2xl p-3 bg-white/3 border border-white/10 text-white" />
+                <input name="email" type="email" required className="w-full rounded-[var(--radius)] p-3 bg-white/3 border border-white/10 text-white" />
               </label>
 
               <label className="block">
                 <div className="text-white/50 mb-1">Message</div>
-                <textarea name="message" required rows={4} className="w-full rounded-2xl p-3 bg-white/3 border border-white/10 text-white" />
+                <textarea name="message" required rows={4} className="w-full rounded-[var(--radius)] p-3 bg-white/3 border border-white/10 text-white" />
               </label>
 
               <div className="flex items-center justify-between">
-                <button type="submit" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[var(--accent)] text-black font-medium">Send Message</button>
+                <button type="submit" className="inline-flex items-center gap-2 px-5 py-3 rounded-[var(--radius)] bg-[var(--accent)] text-black font-medium">Send Message</button>
                 <div className="text-xs text-white/60">I’ll reply within 48h. Your message is private and won’t be shared.</div>
               </div>
             </form>
@@ -1329,8 +1384,8 @@ const Contact = () => (
             <div className="space-y-2">
               <div className="text-white/50">Social</div>
               <div className="flex flex-col gap-2">
-                <a className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10" href="https://github.com/Ishrell/" target="_blank" rel="noreferrer"><Github className="size-4"/> GitHub</a>
-                <a className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-white/15 text-white/90 hover:bg-white/10" href="https://www.linkedin.com/in/pushya-saie-raag-e-134960272/" target="_blank" rel="noreferrer"><Linkedin className="size-4"/> LinkedIn</a>
+                <a className="inline-flex items-center gap-2 px-3 py-2 rounded-[var(--radius)] border border-white/15 text-white/90 hover:bg-white/10" href="https://github.com/Ishrell/" target="_blank" rel="noreferrer"><Github className="size-4"/> GitHub</a>
+                <a className="inline-flex items-center gap-2 px-3 py-2 rounded-[var(--radius)] border border-white/15 text-white/90 hover:bg-white/10" href="https://www.linkedin.com/in/pushya-saie-raag-e-134960272/" target="_blank" rel="noreferrer"><Linkedin className="size-4"/> LinkedIn</a>
               </div>
             </div>
           </div>
@@ -1347,7 +1402,17 @@ const Footer = () => (
 );
 
 export default function PortfolioApp() {
-  const { accent, setAccent } = useAccent();
+  const { accent, setAccent, setAccentRaw } = useAccent();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('hero');
+  const [liteMode, setLiteMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('liteMode') === '1';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('liteMode', liteMode ? '1' : '0');
+  }, [liteMode]);
 
   // Enforce dark-only UI and set global accent variables
   useEffect(() => {
@@ -1356,9 +1421,48 @@ export default function PortfolioApp() {
     // populate CSS accent variables (controlled, subtle glow)
     const a = accent || "#8B5CF6";
     document.documentElement.style.setProperty("--accent", a);
-    document.documentElement.style.setProperty("--accent-soft", "#6D28D9");
+    // keep the soft variant in sync with the chosen accent
+    document.documentElement.style.setProperty("--accent-soft", `${a}22`);
     document.documentElement.style.setProperty("--accent-glow", `${a}33`); // subtle translucent glow
   }, [accent]);
+
+  // Active section tracking using IntersectionObserver
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const accentLocked = () => !!localStorage.getItem('accentLocked');
+    // derive the section accent map from the ACCENTS array so every accent is referenced
+    const map = {
+      hero: ACCENTS[0].value,        // Cyan
+      about: ACCENTS[1].value,       // Indigo
+      projects: ACCENTS[2].value,    // Violet
+      skills: ACCENTS[3].value,      // Magenta
+      credentials: ACCENTS[4].value, // Amber
+      leadership: ACCENTS[2].value,  // Violet
+      education: ACCENTS[1].value,   // Indigo
+      contact: ACCENTS[0].value      // Cyan
+    };
+
+    const opts = { root: null, rootMargin: '0px', threshold: 0.55 };
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const id = e.target.id || e.target.getAttribute('id');
+          if (id) {
+            setActiveSection(id);
+            if (!accentLocked()) {
+              const a = map[id] || '#8B5CF6';
+              try { setAccentRaw(a); } catch (e) {}
+            }
+          }
+        }
+      });
+    }, opts);
+
+  // observe only direct children of <main> with an id (these correspond to our SectionBlock ids)
+  const sections = document.querySelectorAll('main > [id]');
+    sections.forEach(s => observer.observe(s));
+    return () => observer.disconnect();
+  }, [setAccentRaw]);
 
   // Inject minimal JSON-LD Person schema for SEO
   useEffect(() => {
@@ -1378,13 +1482,14 @@ export default function PortfolioApp() {
   }, []);
 
   return (
+    <LiteContext.Provider value={{ liteMode, setLiteMode }}>
     <div className={`min-h-dvh relative bg-[#0A0A0F] font-sans`}>
       <a href="#main" className="sr-only-focusable">Skip to content</a>
       <GridBackground />
       <FloatingParticles />
 
       {/* Top App Bar */}
-      <motion.div 
+  <motion.div 
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
@@ -1392,18 +1497,13 @@ export default function PortfolioApp() {
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="mt-4">
-            <Glass variant="dark" className="px-4 py-2">
+            <Glass variant="dark" className="px-4 py-2 top-bar">
               <div className="flex items-center justify-between">
-                <motion.div 
-                  whileHover={{ scale: 1.03 }}
-                  className="flex items-center gap-3 cursor-pointer"
-                >
-                  <div 
-                    className="size-6"
-                    style={{ background: "var(--accent)", borderRadius: "50%" }}
-                  />
+                <motion.div whileHover={{ scale: 1.03 }} className="flex items-center gap-3 cursor-pointer">
+                  <div className="size-6" style={{ background: "var(--accent)", borderRadius: "50%" }} />
                   <span className="font-semibold tracking-tight text-white">Pushya • Portfolio</span>
                 </motion.div>
+
                 <nav className="hidden md:flex items-center gap-1 text-sm">
                   {[
                     { href: "#about", label: "About" },
@@ -1418,13 +1518,26 @@ export default function PortfolioApp() {
                       key={i.href}
                       href={i.href}
                       whileHover={{ scale: 1.03, y: -2 }}
-                      className="px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/6 transition"
+                      className={`px-3 py-1.5 text-white/80 hover:text-white hover:bg-white/6 transition ${activeSection === i.href.slice(1) ? 'bg-white/6 text-white rounded-[calc(var(--radius)/1.4)]' : ''}`}
                     >
                       {i.label}
                     </motion.a>
                   ))}
                 </nav>
+
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setLiteMode(v => !v)}
+                    title="Toggle Lite Mode"
+                    className={`inline-flex items-center gap-2 px-2 py-1 text-sm border border-white/10 ${liteMode ? 'bg-white/6 text-white' : 'bg-transparent text-white/80'} rounded-[calc(var(--radius)/1.6)]`}
+                  >
+                    {liteMode ? 'Lite: On' : 'Lite: Off'}
+                  </button>
+
+                  <button onClick={()=>setMobileNavOpen(true)} className="md:hidden inline-flex items-center justify-center p-2 rounded-[var(--radius)] bg-white/5">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+                  </button>
+
                   <motion.a
                     whileHover={{ scale: 1.03, y: -2 }}
                     whileTap={{ scale: 0.98 }}
@@ -1440,8 +1553,10 @@ export default function PortfolioApp() {
         </div>
       </motion.div>
 
+  <MobileNav open={mobileNavOpen} onClose={()=>setMobileNavOpen(false)} active={activeSection} />
+
       {/* Content: full-viewport sections with vertical scroll snapping */}
-      <main className="pt-24 h-screen overflow-y-auto snap-y snap-mandatory">
+  <main id="main" className="pt-24 h-screen overflow-y-auto snap-y snap-mandatory">
         <SectionBlock id="hero">
           <Hero />
         </SectionBlock>
@@ -1449,20 +1564,28 @@ export default function PortfolioApp() {
           <About />
         </SectionBlock>
         <SectionBlock id="projects">
-          <Projects />
+          <LazyMount>
+            <Projects />
+          </LazyMount>
         </SectionBlock>
         {/* Combined section: Credentials (new word) — merges internships + certifications */}
-        <SectionBlock id="credentials">
-          <InternCerts />
+  <SectionBlock id="credentials">
+          <LazyMount>
+            <InternCerts />
+          </LazyMount>
         </SectionBlock>
         <SectionBlock id="skills">
-          <Skills />
+          <LazyMount>
+            <Skills />
+          </LazyMount>
         </SectionBlock>
         <SectionBlock id="leadership">
           <Leadership />
         </SectionBlock>
         <SectionBlock id="education">
-          <Education />
+          <LazyMount>
+            <Education />
+          </LazyMount>
         </SectionBlock>
         <SectionBlock id="contact">
           <Contact />
@@ -1472,9 +1595,24 @@ export default function PortfolioApp() {
         </SectionBlock>
       </main>
 
-      <Dock />
-      <AccentPicker accent={accent} setAccent={setAccent} />
+  <div className="dock">
+    <Dock active={activeSection} />
+  </div>
+  <AccentPicker accent={accent} setAccent={setAccent} onAuto={() => {
+    // clear accentLocked and allow the section observer to set accents automatically
+    try { localStorage.removeItem('accentLocked'); } catch(e) {}
+    // small UX note: there is an observer that will set accents when sections intersect (see below)
+    alert('Accent auto mode enabled — sections will control accents.');
+  }} />
+  {activeSection !== 'hero' && (
+    <div className="back-to-top">
+      <button className="btn-primary" aria-label="Back to top" onClick={() => { document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        ↑ Top
+      </button>
     </div>
+  )}
+    </div>
+    </LiteContext.Provider>
   );
 }
 
