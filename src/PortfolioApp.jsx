@@ -420,7 +420,7 @@ const Dock = ({ active }) => (
   </Glass>
 );
 
-const MobileNav = ({ open, onClose, active }) => {
+const MobileNav = ({ open, onClose, active, accent, setAccent, setAccentRaw }) => {
   const reduceMotion = useReducedMotion();
   return (
     <AnimatePresence>
@@ -466,6 +466,30 @@ const MobileNav = ({ open, onClose, active }) => {
                 </a>
               ))}
             </nav>
+            <div className="mt-6 border-t border-white/6 pt-4">
+              <div className="text-xs text-white/70 mb-2 flex items-center gap-2">
+                <Palette className="size-4" /> Accent
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {ACCENTS.map((c) => (
+                  <button
+                    key={c.value}
+                    aria-label={c.name}
+                    onClick={() => { try { setAccent(c.value); } catch(e){}; onClose(); }}
+                    className="h-8 w-8 border border-white/10 rounded-md"
+                    style={{ background: c.value, outline: accent === c.value ? `2px solid ${c.value}` : 'none' }}
+                  />
+                ))}
+                <button
+                  aria-label="Auto accents"
+                  title="Auto accents"
+                  onClick={() => { try { localStorage.removeItem('accentLocked'); } catch(e){}; try { setAccentRaw && setAccentRaw(localStorage.getItem('accent') || ACCENTS[2].value); } catch(e){}; onClose(); }}
+                  className="h-8 w-8 border border-white/10 flex items-center justify-center text-xs text-white/80"
+                >
+                  A
+                </button>
+              </div>
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -538,7 +562,7 @@ const Hero = () => {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="mt-7 flex flex-wrap items-center gap-3"
+              className="mt-7 hero-actions flex flex-wrap items-center gap-3"
             >
               <motion.a
                 whileHover={{ scale: 1.05, y: -2 }}
@@ -1553,7 +1577,7 @@ export default function PortfolioApp() {
         </div>
       </motion.div>
 
-  <MobileNav open={mobileNavOpen} onClose={()=>setMobileNavOpen(false)} active={activeSection} />
+  <MobileNav open={mobileNavOpen} onClose={()=>setMobileNavOpen(false)} active={activeSection} accent={accent} setAccent={setAccent} setAccentRaw={setAccentRaw} />
 
       {/* Content: full-viewport sections with vertical scroll snapping */}
   <main id="main" className="pt-24 h-screen overflow-y-auto snap-y snap-mandatory">
@@ -1598,12 +1622,7 @@ export default function PortfolioApp() {
   <div className="dock">
     <Dock active={activeSection} />
   </div>
-  <AccentPicker accent={accent} setAccent={setAccent} onAuto={() => {
-    // clear accentLocked and allow the section observer to set accents automatically
-    try { localStorage.removeItem('accentLocked'); } catch(e) {}
-    // small UX note: there is an observer that will set accents when sections intersect (see below)
-    alert('Accent auto mode enabled — sections will control accents.');
-  }} />
+  {/* Accent picker moved to mobile nav for compact screens */}
   {activeSection !== 'hero' && (
     <div className="back-to-top">
       <button className="btn-primary" aria-label="Back to top" onClick={() => { document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' }); }}>

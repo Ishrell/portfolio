@@ -55,6 +55,14 @@
     -webkit-tap-highlight-color: rgba(0,0,0,0.02);
   }
 
+  /* Hero layout spacing tweaks to reduce congestion on mobile */
+  .hero-actions { display: flex; flex-direction: column; gap: 10px; }
+  .hero-actions a, .hero-actions button { width: 100%; text-align: center; padding: 12px 14px; }
+  .grid.lg\:grid-cols-12 { grid-template-columns: 1fr; }
+  .lg\:col-span-7, .lg\:col-span-5 { width: 100%; }
+
+  .tag, .Tag, .px-2\.5 { padding: 8px 10px !important; }
+
   /* increase mobile nav / action hit areas */
   .mobile-nav-drawer a, .mobile-nav-drawer button, .mobile-nav-drawer .link {
     padding: 14px 14px !important;
