@@ -3,6 +3,33 @@
 All notable changes to this project are documented in this file.
 This project follows a lightweight, date-based changelog for local development.
 
+## [Unreleased] - 2025-08-20
+
+### Added
+- Distinct dynamic backgrounds with motion gating and fallbacks:
+  - Vaporwave/Outrun: perspective neon grid, rising horizon sun bands, aurora drift, shooting stars, diagonal glare sweep, VHS scanlines; static fallback in Lite/Reduced Motion.
+  - Cyberdeck HUD: volumetric fog, scanner rings, HUD lines, subtle code rain, diagonal scan sweep, readability veil.
+- CRT overlay for Cyberdeck: scanlines, phosphor triads, gentle flicker, curvature/vignette illusion.
+- Full-screen AI Takeover overlay (fear mode) with terminal banner, glitch bars, breach progress, and a single “Enable Firewall” CTA; honors Reduced Motion.
+- Backgrounds toggle and theme toggle wired into the mobile drawer; accent palette moved there too.
+- Gyroscope tilt for InteractiveCard on mobile (coarse pointer) with iOS permission flow, throttled DeviceOrientation, and cleanup.
+
+### Changed
+- Projects section cards restyled to use the glass variant (away from “dark”), maintaining the Glow overlay.
+- Top bar/hamburger rethemed to match both themes; sweeping title underline animation gated by motion/lite.
+- Normalized z-index stacks; root container made transparent; only a single background renders at a time.
+- Mobile ergonomics pass: viewport-fit=cover, dvh/svh sizing, softened scroll snap, overscroll containment, iOS momentum scrolling, safe-area paddings, scrollable mobile drawer.
+- Terminal-style breach banner moved to a global high-z overlay above the top bar.
+
+### Fixed
+- JSX structural issues from initial mobile gyroscope insertion; repaired component return/handlers and ensured provider wrappers close correctly.
+- Hidden/stacked overlay issues: ensured AI takeover overlay and banner appear above UI; scroll is locked while active and restored on exit.
+- Vaporwave perspective looked vertical; rebuilt using an SVG vanishing-point grid with animated rows.
+
+### Notes
+- Motion-heavy effects auto-disable in Lite Mode and when the user prefers reduced motion.
+- Consider extracting large components (backgrounds, overlays, InteractiveCard) into separate files for maintenance.
+
 ## [Unreleased] - 2025-08-16
 
 ### Added
@@ -25,6 +52,7 @@ This project follows a lightweight, date-based changelog for local development.
 - UI polish:
   - New `.btn-primary`, improved input focus styles, `.top-bar`, `.dock`, and `.back-to-top` styles in `src/index.css`.
   - Microsoft Office tools (Word, Excel, PowerPoint, OneNote) added to Tools & Design tags.
+  - Applied reusable Glow overlay to more cards/sections (Skills categories, Certifications, Education, About, Contact, Leadership). Wrapped affected `Glass` cards with `group` and added `relative overflow-hidden` for proper effect.
 
 ### Fixed
 - Resolved the blank-screen/syntax issues in `src/PortfolioApp.jsx` by repairing malformed JSX and adding missing wrapper components.
@@ -55,17 +83,11 @@ npm run dev
    - Watch browser console for `[AccentObserver] section= <id> accent= <hex>` messages (diagnostic logs) and confirm the site accent changes.
 5. Toggle Lite Mode in the top bar and confirm particles and heavy motion are suppressed.
 6. Inspect mobile behavior or use responsive emulator to confirm blur/shadow reductions and tappable hit targets.
+7. Hover or focus the updated cards (e.g., Skills categories, Education, About) and verify the subtle accent glow appears without layout shift.
 
 ### Notes & Next steps
 - Tailwind purge: If you build for production and notice styles like `rounded-[var(--radius)]` missing, add them to `safelist` in `tailwind.config.js`.
 - Remove or disable the `console.debug` diagnostic logs before shipping to production.
 - Consider splitting `src/PortfolioApp.jsx` into smaller component files for maintainability.
 - Optional: add icons for Office tags and more granular toggles in a settings panel (particles vs. card transforms).
-
----
-
-If you'd like, I can also:
-- Create a release note for a specific semantic version (e.g., `v0.3.0`) and tag the repo.
-- Add a `safelist` example to `tailwind.config.js` for the arbitrary classes.
-- Remove diagnostic logging and run a production build to verify CSS purging.
 

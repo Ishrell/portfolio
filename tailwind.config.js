@@ -4,6 +4,14 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  safelist: [
+    'rounded-[var(--radius)]',
+    'rounded-[calc(var(--radius)/1.6)]',
+    'rounded-[calc(var(--radius)/2)]',
+    'bg-[var(--accent)]',
+    'text-[var(--accent)]',
+    'border-[var(--accent)]',
+  ],
   theme: {
     extend: {
       colors: {
